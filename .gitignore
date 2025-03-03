@@ -1,0 +1,18 @@
+# Igonorar archivos y variables de configuracion
+apps.json
+config.ps1
+
+# Ignorar archivos temporales y de sistema
+*.tmp
+*.bak
+*.old
+*.log
+
+# Ignorar archivos de configuración de IDE
+.vscode/
+*.code-workspace
+
+# Ignorar archivos de PowerShell
+*.ps1xml
+*.psm1
+*.pssc

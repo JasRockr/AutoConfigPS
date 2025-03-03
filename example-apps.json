@@ -1,0 +1,19 @@
+[
+  {
+    "_content": "Este es un archivo JSON de ejemplo que contiene una lista de aplicaciones para instalar."
+  },
+  {
+    "Name": "Google Chrome",
+    "Source": "Winget"
+  },
+  {
+    "Name": "Notepad++",
+    "Source": "Winget"
+  },
+  {
+    "Name": "CustomApp",
+    "Source": "Network",
+    "Path": "\\\\NetworkPath\\Installer.exe",
+    "Arguments": "/silent /norestart"
+  }
+]
