@@ -1,0 +1,28 @@
+name: Validate PowerShell Scripts
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install PSScriptAnalyzer
+        run: |
+          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+
+      - name: Validate PowerShell scripts
+        run: |
+          Get-ChildItem -Path .\scripts\*.ps1 | ForEach-Object {
+            Write-Host "Validating $_..."
+            Invoke-ScriptAnalyzer -Path $_
+          }

@@ -1,0 +1,19 @@
+name: Create Tag on Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  create-tag:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Create tag
+        run: |
+          TAG_NAME=$(echo $GITHUB_REF | cut -d'/' -f3)
+          git tag -a $TAG_NAME -m "Release $TAG_NAME"
+          git push origin $TAG_NAME
