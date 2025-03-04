@@ -22,6 +22,12 @@ $Host.UI.RawUI.WindowTitle = "Configuraciones iniciales - Parte 3"
 # # Flujo principal
 # # --------------------------------------------------------------
 
+# @param $HostName Nombre del equipo
+# @param $DomainName Nombre del dominio
+# @param $errorLog Ruta del archivo de log de errores
+# @param $Delay Tiempo de espera en segundos
+
+
 # 0. Cargar archivo de configuración
 # ----------------------------------------------------------------
 Write-Host "Cargando archivo de config..." -ForegroundColor Cyan
@@ -37,9 +43,10 @@ if (Test-Path $ConfigPath) {
     Write-Host "Parece que hubo un error importando las configuraciones." -ForegroundColor DarkRed
     Write-Host "Confirma que el archivo 'config.ps1' exista en la carpeta raíz del script." -ForegroundColor DarkRed
     # TODO: Crear archivo (config-default.ps1) de configuración predeterminado si no se encuentra
-    Start-Sleep -Seconds 5
+    Start-Sleep -Seconds $Delay
     exit 1
 }
+# --
 
 # 1. Validar cambios aplicados
 # ----------------------------------------------------------------
@@ -66,29 +73,36 @@ try {
     Write-Host "Error al validar cambios: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }
+# --
 
-# 2. Eliminar tarea programada anterior
+# 2. Eliminar tarea programada previamente creada
 # ----------------------------------------------------------------
 Write-Host "Eliminando tarea programada anterior..." -ForegroundColor Cyan
 
+# Eliminar tarea programada 'Exec-Join-Domain' 
+$DelTaskName = "Exec-Check-Continue"
+
 try {
     # Verificar si la tarea existe antes de eliminarla
-    $existingTask = Get-ScheduledTask -TaskName "Exec-Check-Continue" -ErrorAction SilentlyContinue
+    $existingTask = Get-ScheduledTask -TaskName $DelTaskName -ErrorAction SilentlyContinue
     if ($existingTask) {
-        Unregister-ScheduledTask -TaskName "Exec-Check-Continue" -Confirm:$false
-        Write-Host "Tarea programada 'Exec-Check-Continue' eliminada." -ForegroundColor Green
+        Unregister-ScheduledTask -TaskName $DelTaskName -Confirm:$false
+        Write-Host "Tarea programada '$DelTaskName' eliminada correctamente." -ForegroundColor Green
     } else {
-        Write-Host "La tarea programada 'Exec-Check-Continue' no existe." -ForegroundColor Yellow
+        Write-Host "La tarea programada '$DelTaskName' no existe." -ForegroundColor Yellow
     }
 } catch {
-    Write-Host "Error al eliminar la tarea programada: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Error "Error al eliminar la tarea programada '$DelTaskName': $($_.Exception.Message)"
+    Start-Sleep -Seconds $Delay
     exit 1
 }
+# --
 
 # 3. Desactivar el inicio de sesión automático
 # ----------------------------------------------------------------
 Write-Host "Desactivando inicio de sesión automático..." -ForegroundColor Cyan
 
+# Ruta del registro para el inicio de sesión automático
 $AutoLoginKey = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
 
 try {
@@ -100,12 +114,20 @@ try {
     Write-Host "Error al desactivar el inicio de sesión automático: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }
+# --
 
 # 4. Iniciar instalación de aplicaciones
 # ----------------------------------------------------------------
 Write-Host "Iniciando instalación de aplicaciones..." -ForegroundColor Cyan
 # Lista de aplicaciones a instalar (definida en config.ps1 o apps.json)
 # winget install --id=Google.Chrome -e --silent --accept-package-agreements --accept-source-agreements
+
+# Actualizar la fuentes de winget
+winget source reset --force
+winget source remove -n winget
+# winget source add -n winget -a https://winget.azureedge.net/cache
+winget source add -n winget -a https://cdn.winget.microsoft.com/cache
+winget source update
 
 # Ruta del archivo JSON que contiene la lista de aplicaciones
 $appsPath = "$PSScriptRoot\..\apps.json"
@@ -163,6 +185,7 @@ foreach ($app in $apps) {
         $errorMessage | Out-File -FilePath $errorLog -Append
     }
 }
+# --
 
 # 5. Confirmar configuración automática
 # ----------------------------------------------------------------
@@ -177,6 +200,7 @@ try {
     Write-Host "Error al confirmar la configuración automática: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }
+# --
 
 # Restablecer título de ventana al valor predeterminado
 # ----------------------------------------------------------------

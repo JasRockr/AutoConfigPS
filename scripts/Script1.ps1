@@ -22,6 +22,14 @@ $Host.UI.RawUI.WindowTitle = "Configuraciones iniciales - Parte 1"
 # # Flujo principal
 # # ----------------------------------------------------------------
 
+# @param [int] $Delay - Retardo en segundos entre las operaciones
+# @param [string] $NetworkSSID - Nombre de la red Wi-Fi
+# @param [string] $NetworkPass - Contraseña de la red Wi-Fi
+# @param [string] $Username - Nombre de usuario local
+# @param [string] $Password - Contraseña de usuario local
+# @param [string] $HostName - Nuevo nombre del equipo
+# @param [string] $ScriptPath - Ruta del script de la segunda parte
+
 # 0. Cargar archivo de configuración
 # ----------------------------------------------------------------
 Write-Host "Cargando archivo de config..." -ForegroundColor Cyan
@@ -37,12 +45,12 @@ if (Test-Path $ConfigPath) {
     Write-Host "Parece que hubo un error importando las configuraciones." -ForegroundColor DarkRed
     Write-Host "Confirma que el archivo 'config.ps1' exista en la carpeta raíz del script." -ForegroundColor DarkRed
     # TODO: Crear archivo (config-default.ps1) de configuración predeterminado si no se encuentra
-    Start-Sleep -Seconds 5
+    Start-Sleep -Seconds $Delay
     exit 1
-}
+}Nop 
 
 # Configurar política de ejecución de scripts (global)
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine -Force
+# Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine -Force
 
 # 1. Configurar red Wi-Fi
 # ----------------------------------------------------------------
@@ -67,33 +75,33 @@ try {
     # Verificar y crear perfil Wi-Fi
     # $existingProfile = Get-WiFiProfile -Name $NetworkSSID -ErrorAction SilentlyContinue
     $existingProfile = netsh wlan show profiles $NetworkSSID | Select-String -Pattern "Perfil" | Select-Object -First 1
-    if (-not $existingProfile) {
+    if ($existingProfile -match "No se encuentra el perfil") {
         Write-Host "Creando perfil para: $NetworkSSID" -ForegroundColor DarkBlue
         $wifiProfile = @"
-        <?xml version="1.0"?>
-        <WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
-        <name>$NetworkSSID</name>
-        <SSIDConfig>
-        <SSID>
-            <name>$NetworkSSID</name>
-        </SSID>
-        </SSIDConfig>
-        <connectionType>ESS</connectionType>
-        <connectionMode>auto</connectionMode>
-        <MSM>
-        <security>
-            <authEncryption>
-            <authentication>WPA2PSK</authentication>
-            <encryption>AES</encryption>
-            </authEncryption>
-            <sharedKey>
-            <keyType>passPhrase</keyType>
-            <protected>false</protected>
-            <keyMaterial>$Pswdpln</keyMaterial>
-            </sharedKey>
-        </security>
-        </MSM>
-        </WLANProfile>
+<?xml version="1.0"?>
+<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
+<name>$NetworkSSID</name>
+<SSIDConfig>
+<SSID>
+    <name>$NetworkSSID</name>
+</SSID>
+</SSIDConfig>
+<connectionType>ESS</connectionType>
+<connectionMode>auto</connectionMode>
+<MSM>
+<security>
+    <authEncryption>
+    <authentication>WPA2PSK</authentication>
+    <encryption>AES</encryption>
+    </authEncryption>
+    <sharedKey>
+    <keyType>passPhrase</keyType>
+    <protected>false</protected>
+    <keyMaterial>$Pswdpln</keyMaterial>
+    </sharedKey>
+</security>
+</MSM>
+</WLANProfile>
 "@
         $tempFile = New-TemporaryFile | Rename-Item -NewName {"$NetworkSSID.xml"} -PassThru
         $wifiProfile | Out-File $tempFile.FullName -Encoding UTF8 -Force
@@ -108,14 +116,25 @@ try {
     # Conectar a la red Wi-Fi
     Write-Host "Iniciando conexión a: $NetworkSSID" -ForegroundColor Blue
     netsh wlan connect name=$NetworkSSID
-    Start-Sleep -Seconds $Delay
+    Start-Sleep -Seconds $Delay 
 
     # Verificar conexión
     $newConnection = netsh wlan show interfaces | Select-String -Pattern "SSID" | Select-Object -First 1
     if ($newConnection -match $NetworkSSID) {
         Write-Host "Conexión exitosa a $NetworkSSID" -ForegroundColor Green
     } else {
-        throw "Error de conexión: No se pudo validar la conexión"
+        # Intentar reconectar si la primera conexión falla
+        Write-Host "Primer intento de conexión fallido. Intentando nuevamente..." -ForegroundColor Yellow
+        netsh wlan connect name=$NetworkSSID
+        Start-Sleep -Seconds $Delay
+
+        # Verificar conexión nuevamente
+        $newConnection = netsh wlan show interfaces | Select-String -Pattern "SSID" | Select-Object -First 1
+        if ($newConnection -match $NetworkSSID) {
+            Write-Host "Conexión exitosa a $NetworkSSID" -ForegroundColor Green
+        } else {
+            throw "Error de conexión: No se pudo validar la conexión"
+        }
     }
 } catch {
     Write-Host "Error en conexión Wi-Fi: $($_.Exception.Message)" -ForegroundColor Red
@@ -161,15 +180,22 @@ try {
 # ----------------------------------------------------------------
 
 # Nombre de tarea programada para unir el equipo al dominio
-$TaskName = "Exec-Join-Domain"
-$Script = "$ScriptPath\Script2.ps1"
+$TaskName = "Exec-Join-Domain" # Nombre de la tarea programada
+$Script = "$ScriptPath\Script2.ps1" # Ruta del script de la segunda parte
+$DelayTask = 60 # Retardo en segundos para iniciar la tarea programada
+
+# Verificar si existe el script
+if (-Not (Test-Path $Script)) {
+    Write-Error "El script '$Script' no existe en la ruta especificada."
+    exit 1
+}
 
 # -- 
-$Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-ExecutionPolicy Bypass -File $Script"
-$Trigger = New-ScheduledTaskTrigger -AtStartup # Se ejecutará al inicio del sistema
-$Settings = New-ScheduledTaskSettingsSet -RunOnlyIfNetworkAvailable -StartWhenAvailable # Se ejecutará solo si hay red disponible
-$Principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest # Se ejecutará con los privilegios más altos
-$Task = New-ScheduledTask -Action $Action -Trigger $Trigger -Settings $Settings -Principal $Principal # Crear la tarea programada
+$Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-ExecutionPolicy Bypass -File $Script" # Acción a ejecutar
+$Trigger = New-ScheduledTaskTrigger -AtStartup -RandomDelay "00:00:$DelayTask" # Disparador de la tarea programada: Al iniciar el sistema
+$Settings = New-ScheduledTaskSettingsSet -RunOnlyIfNetworkAvailable -StartWhenAvailable -HistoryEnabled # Configuración de la tarea programada
+$Principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest # Configuración del usuario principal con permisos de administrador
+$Task = New-ScheduledTask -Action $Action -Trigger $Trigger -Settings $Settings -Principal $Principal
 
 try {
     # Verificar si la tarea ya existe
@@ -177,6 +203,7 @@ try {
     if ($existingTask) {
         Write-Host "La tarea '$TaskName' ya existe. Eliminando tarea existente..." -ForegroundColor Yellow
         Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+        Write-Host "Tarea '$TaskName' eliminada correctamente." -ForegroundColor Green
     }
     # Crear la tarea programada
     Register-ScheduledTask -TaskName $TaskName -InputObject $Task -Force

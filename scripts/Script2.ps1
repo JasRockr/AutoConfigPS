@@ -22,6 +22,12 @@ $Host.UI.RawUI.WindowTitle = "Configuraciones iniciales - Parte 2"
 # # Flujo principal
 # # ----------------------------------------------------------------
 
+# @param $Useradmin Usuario de dominio con permisos de administrador
+# @param $Passadmin Contraseña de usuario de dominio
+# @param $DomainName Nombre del dominio
+# @param $Delay Tiempo de espera en segundos
+# @param $ScriptPath Ruta del script de la tercera parte
+
 # 0. Cargar archivo de configuración
 # ----------------------------------------------------------------
 Write-Host "Cargando archivo de config..." -ForegroundColor Cyan
@@ -37,7 +43,7 @@ if (Test-Path $ConfigPath) {
     Write-Host "Parece que hubo un error importando las configuraciones." -ForegroundColor DarkRed
     Write-Host "Confirma que el archivo 'config.ps1' exista en la carpeta raíz del script." -ForegroundColor DarkRed
     # TODO: Crear archivo (config-default.ps1) de configuración predeterminado si no se encuentra
-    Start-Sleep -Seconds 5
+    Start-Sleep -Seconds $Delay
     exit 1
 }
 
@@ -87,12 +93,19 @@ try {
 # Nombre de tarea programada para confirmar cambios aplicados en el equipo
 $TaskName = "Exec-Check-Continue"
 $Script = "$ScriptPath\Script3.ps1"
+$DelayTask = 60 # Retardo en segundos para iniciar la tarea programada
 
-# --
-$Action = New-ScheduledTaskAction -Execute "powershell.exe" -File $Script
-$Trigger = New-ScheduledTaskTrigger -AtStartup
-$Settings = New-ScheduledTaskSettingsSet -RunOnlyIfNetworkAvailable -StartWhenAvailable
-$Principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+# Verificar si existe el script
+if (-Not (Test-Path $Script)) {
+    Write-Error "El script '$Script' no existe en la ruta especificada."
+    exit 1
+}
+
+# -- 
+$Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-ExecutionPolicy Bypass -File $Script" # Acción a ejecutar
+$Trigger = New-ScheduledTaskTrigger -AtStartup -RandomDelay "00:00:$DelayTask" # Disparador de la tarea programada: Al iniciar el sistema
+$Settings = New-ScheduledTaskSettingsSet -RunOnlyIfNetworkAvailable -StartWhenAvailable -HistoryEnabled # Configuración de la tarea programada
+$Principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest # Configuración del usuario principal con permisos de administrador
 $Task = New-ScheduledTask -Action $Action -Trigger $Trigger -Settings $Settings -Principal $Principal
 
 try {
@@ -101,6 +114,7 @@ try {
     if ($existingTask) {
         Write-Host "La tarea '$TaskName' ya existe. Eliminando tarea existente..." -ForegroundColor Yellow
         Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+        Write-Host "Tarea '$TaskName' eliminada correctamente." -ForegroundColor Green
     }
     # Crear la tarea programada
     Register-ScheduledTask -TaskName $TaskName -InputObject $Task -Force
@@ -111,24 +125,30 @@ try {
     Start-Sleep -Seconds $Delay
     exit 1
 }
+# --
 
 # 4. Eliminar la tarea programada previamente creada
 # ----------------------------------------------------------------
+Write-Host "Eliminando tarea programada anterior..." -ForegroundColor Cyan
+
 # Eliminar tarea programada 'Exec-Join-Domain' 
+$DelTaskName = "Exec-Join-Domain"
+
 try {
     # Verificar si la tarea existe antes de eliminarla
-    $existingTask = Get-ScheduledTask -TaskName "Exec-Join-Domain" -ErrorAction SilentlyContinue
+    $existingTask = Get-ScheduledTask -TaskName $DelTaskName -ErrorAction SilentlyContinue
     if ($existingTask) {
-        Unregister-ScheduledTask -TaskName "Exec-Join-Domain" -Confirm:$false
-        Write-Host "Tarea programada 'Exec-Join-Domain' eliminada."
+        Unregister-ScheduledTask -TaskName $DelTaskName -Confirm:$false
+        Write-Host "Tarea programada '$DelTaskName' eliminada correctamente." -ForegroundColor Green
     } else {
-        Write-Host "La tarea programada 'Exec-Join-Domain' no existe." -ForegroundColor Yellow
+        Write-Host "La tarea programada '$DelTaskName' no existe." -ForegroundColor Yellow
     }
 } catch {
-    Write-Error "Error al eliminar la tarea programada 'Exec-Join-Domain': $($_.Exception.Message)"
+    Write-Error "Error al eliminar la tarea programada '$DelTaskName': $($_.Exception.Message)"
     Start-Sleep -Seconds $Delay
     exit 1
 }
+# --
 
 # 5. Reiniciar el equipo
 # ----------------------------------------------------------------
