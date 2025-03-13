@@ -47,7 +47,7 @@ if (Test-Path $ConfigPath) {
     # TODO: Crear archivo (config-default.ps1) de configuración predeterminado si no se encuentra
     Start-Sleep -Seconds $Delay
     exit 1
-}Nop 
+}
 
 # Configurar política de ejecución de scripts (global)
 # Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine -Force
@@ -114,30 +114,30 @@ try {
     Remove-Variable -Name Pswdpln
 
     # Conectar a la red Wi-Fi
-    Write-Host "Iniciando conexión a: $NetworkSSID" -ForegroundColor Blue
+    Write-Host "Conectando a la red: $NetworkSSID" -ForegroundColor Blue
     netsh wlan connect name=$NetworkSSID
     Start-Sleep -Seconds $Delay 
 
     # Verificar conexión
     $newConnection = netsh wlan show interfaces | Select-String -Pattern "SSID" | Select-Object -First 1
     if ($newConnection -match $NetworkSSID) {
-        Write-Host "Conexión exitosa a $NetworkSSID" -ForegroundColor Green
+        Write-Host "Se ha conectado a la red Wi-Fi: $NetworkSSID" -ForegroundColor Green
     } else {
         # Intentar reconectar si la primera conexión falla
-        Write-Host "Primer intento de conexión fallido. Intentando nuevamente..." -ForegroundColor Yellow
+        Write-Host "2/2 - Conectando nuevamente a la red: $NetworkSSID" -ForegroundColor Yellow
         netsh wlan connect name=$NetworkSSID
         Start-Sleep -Seconds $Delay
 
         # Verificar conexión nuevamente
         $newConnection = netsh wlan show interfaces | Select-String -Pattern "SSID" | Select-Object -First 1
         if ($newConnection -match $NetworkSSID) {
-            Write-Host "Conexión exitosa a $NetworkSSID" -ForegroundColor Green
+            Write-Host "Se ha conectado correctamente a $NetworkSSID" -ForegroundColor Green
         } else {
-            throw "Error de conexión: No se pudo validar la conexión"
+            throw "Ha ocurrido un Error: No se pudo validar la conexion"
         }
     }
 } catch {
-    Write-Host "Error en conexión Wi-Fi: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Error en conexion Wi-Fi: $($_.Exception.Message)" -ForegroundColor Red
     throw $_
 }
 #!
@@ -182,7 +182,6 @@ try {
 # Nombre de tarea programada para unir el equipo al dominio
 $TaskName = "Exec-Join-Domain" # Nombre de la tarea programada
 $Script = "$ScriptPath\Script2.ps1" # Ruta del script de la segunda parte
-$DelayTask = 60 # Retardo en segundos para iniciar la tarea programada
 
 # Verificar si existe el script
 if (-Not (Test-Path $Script)) {
@@ -190,10 +189,14 @@ if (-Not (Test-Path $Script)) {
     exit 1
 }
 
+# Configurar retraso de la tarea programada
+$DelaySeconds = 60 # Retardo en segundos para iniciar la tarea programada
+$DelayTask = New-TimeSpan -Seconds $DelaySeconds
+
 # -- 
 $Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-ExecutionPolicy Bypass -File $Script" # Acción a ejecutar
-$Trigger = New-ScheduledTaskTrigger -AtStartup -RandomDelay "00:00:$DelayTask" # Disparador de la tarea programada: Al iniciar el sistema
-$Settings = New-ScheduledTaskSettingsSet -RunOnlyIfNetworkAvailable -StartWhenAvailable -HistoryEnabled # Configuración de la tarea programada
+$Trigger = New-ScheduledTaskTrigger -AtStartup -RandomDelay $DelayTask # Disparador de la tarea programada: Al iniciar el sistema
+$Settings = New-ScheduledTaskSettingsSet -RunOnlyIfNetworkAvailable -StartWhenAvailable # Configuración de la tarea programada
 $Principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest # Configuración del usuario principal con permisos de administrador
 $Task = New-ScheduledTask -Action $Action -Trigger $Trigger -Settings $Settings -Principal $Principal
 

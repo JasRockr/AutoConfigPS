@@ -101,10 +101,14 @@ if (-Not (Test-Path $Script)) {
     exit 1
 }
 
+# Configurar retraso de la tarea programada
+$DelaySeconds = 60 # Retardo en segundos para iniciar la tarea programada
+$DelayTask = New-TimeSpan -Seconds $DelaySeconds
+
 # -- 
 $Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-ExecutionPolicy Bypass -File $Script" # Acción a ejecutar
-$Trigger = New-ScheduledTaskTrigger -AtStartup -RandomDelay "00:00:$DelayTask" # Disparador de la tarea programada: Al iniciar el sistema
-$Settings = New-ScheduledTaskSettingsSet -RunOnlyIfNetworkAvailable -StartWhenAvailable -HistoryEnabled # Configuración de la tarea programada
+$Trigger = New-ScheduledTaskTrigger -AtStartup -RandomDelay $DelayTask # Disparador de la tarea programada: Al iniciar el sistema
+$Settings = New-ScheduledTaskSettingsSet -RunOnlyIfNetworkAvailable -StartWhenAvailable # Configuración de la tarea programada
 $Principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest # Configuración del usuario principal con permisos de administrador
 $Task = New-ScheduledTask -Action $Action -Trigger $Trigger -Settings $Settings -Principal $Principal
 

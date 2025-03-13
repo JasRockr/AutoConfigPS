@@ -1,5 +1,14 @@
 # Changelog
 
+## [v0.0.3] - 2025-03-06
+
+### Fixed
+
+- Corregido error de tipeo en script1.
+- Mejorados los mensajes de salida durante la conexión Wi-Fi.
+- Ajuste en la configuración de `DelayTask` para definir el retraso de inicio de la tarea en segundos.
+- Eliminado el parámetro `HistoryEnabled` para garantizar compatibilidad con PowerShell 5.1.
+
 ## [v0.0.2] - 2025-03-01
 
 ### Added
