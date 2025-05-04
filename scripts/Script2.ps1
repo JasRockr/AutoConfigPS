@@ -211,10 +211,11 @@ $DelaySeconds = 30 # Retardo en segundos para iniciar la tarea programada
 $DelayTask = New-TimeSpan -Seconds $DelaySeconds
 
 # -- Crear tarea programada
-$Action = New-ScheduledTaskAction -Execute "Powershell.exe" -Argument "-ExecutionPolicy Bypass -File `"$Script`" *>> `"$successLog`" 2>> `"$errorLog`"" # Ejecutar el siguiente script
+$Action = New-ScheduledTaskAction -Execute "Powershell.exe" -Argument "-NoExit -ExecutionPolicy Bypass -File `"$Script`" *>> `"$successLog`" 2>> `"$errorLog`"" # Ejecutar el siguiente script
 $Trigger = New-ScheduledTaskTrigger -AtLogOn -RandomDelay $DelayTask # Ejectuar al iniciar sesión
 $Settings = New-ScheduledTaskSettingsSet -RunOnlyIfNetworkAvailable -StartWhenAvailable # Ejectuar solo si hay red disponible
-$Principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest # Configuración de Permisos
+# $Principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest # Configuración de Permisos
+$Principal = New-ScheduledTaskPrincipal -UserId (Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty UserName) -LogonType Interactive -RunLevel Highest # Configuración de Permisos
 $Task = New-ScheduledTask -Action $Action -Trigger $Trigger -Settings $Settings -Principal $Principal
 
 try {
@@ -287,24 +288,27 @@ if (-not (Get-Variable -Name 'AutoRestart' -ErrorAction SilentlyContinue)) {
     # Validar entrada del usuario
     while ($confirmation -ne 'S' -and $confirmation -ne 'N') {
         Write-Host "Opción no válida. Por favor, introduce 'S' para Sí o 'N' para No." -ForegroundColor Yellow
-        Write-ErrorLog "Regitro de opción no válida: $confirmation"
+        Write-ErrorLog "Registro de opción no válida: $confirmation"
         $confirmation = Read-Host "¿Estás seguro de que deseas reiniciar el equipo? (S/N)"
     }
 } else {
     # Usar la configuración predefinida
     $confirmation = if ($AutoRestart) { 'S' } else { 'N' }
-    Write-Host "Reinicio automático configurado: $($AutoRestart ? 'Sí' : 'No')" -ForegroundColor Cyan
+    Write-Host "Reinicio automático configurado: $(if ($AutoRestart) { 'Sí' } else { 'No' })" -ForegroundColor Cyan
     Write-SuccessLog "Modo de reinicio automático configurado: $($confirmation)"
 }
 
+# Verificar si se debe proceder con el reinicio
 if ($confirmation -eq 'S') {
     Write-Host "Iniciando reinicio del sistema..." -ForegroundColor Yellow
     Write-SuccessLog "Iniciando reinicio del sistema para aplicar cambios"
+
     # Verificar que las tareas programadas se crearon correctamente antes de reiniciar
     $taskExists = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
     if (-not $taskExists) {
         Write-Host "¡ADVERTENCIA! La tarea programada '$TaskName' no se encuentra." -ForegroundColor Red
         Write-ErrorLog "Advertencia pre-reinicio: Tarea programada '$TaskName' no encontrada"
+        
         $forceRestart = Read-Host "¿Deseas continuar con el reinicio de todas formas? (S/N)"
         if ($forceRestart -ne 'S') {
             Write-Host "Reinicio cancelado." -ForegroundColor Yellow
@@ -312,14 +316,25 @@ if ($confirmation -eq 'S') {
             exit 0
         }
     }
+
+    # Esperar antes de reiniciar
     Start-Sleep -Seconds $Delay
-    Restart-Computer -Force
+
+    # Reiniciar el equipo
+    try {
+        Restart-Computer -Force -ErrorAction Stop
+    } catch {
+        Write-Host "Error al intentar reiniciar el equipo: $_" -ForegroundColor Red
+        Write-ErrorLog "Error al reiniciar el equipo: $_"
+        exit 1
+    }
 } else {
     Write-Host "Reinicio cancelado por el usuario." -ForegroundColor Yellow
     Write-Host "Los cambios no serán aplicados hasta el reinicio del sistema!" -ForegroundColor Yellow
     Write-ErrorLog "Reinicio cancelado - Los cambios requieren reinicio para ser aplicados completamente"
     exit 0
 }
+# --
 
 # Restablecer titulo de ventana al valor predeterminado
 # ----------------------------------------------------------------
