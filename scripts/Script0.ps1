@@ -217,7 +217,7 @@ Write-CheckResult -CheckName "Winget" -Passed $wingetAvailable -Details $checks[
 if (-not $wingetAvailable) {
     Write-Host ""
     Write-Host "SOLUCIÓN:" -ForegroundColor Yellow
-    Write-Host "  Winget viene preinstalado en Windows 11 y Windows 10 (1809+)" -ForegroundColor Yellow
+    Write-Host "  Winget viene preinstalado en Windows 11 y Windows 10 1809 o superior" -ForegroundColor Yellow
     Write-Host "  Si no está disponible:" -ForegroundColor Yellow
     Write-Host "    1. Instala 'App Installer' desde Microsoft Store" -ForegroundColor Yellow
     Write-Host "    2. O descarga desde: https://aka.ms/getwinget" -ForegroundColor Yellow
