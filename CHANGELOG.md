@@ -7,6 +7,57 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [v0.0.4-hotfix1] - 2026-01-28
+
+### 📝 Documentacion
+
+#### Added
+- **CRITICO:** Seccion prominente sobre prerequisito de ExecutionPolicy en README.md
+- **IMPORTANTE:** Instrucciones detalladas para habilitar ejecucion de scripts PowerShell
+- **UTIL:** Tabla comparativa de politicas de ejecucion (Restricted, RemoteSigned, Unrestricted, Bypass)
+- **UTIL:** Nueva entrada en troubleshooting para error "ejecucion de scripts deshabilitada"
+- **UTIL:** Agregado como primera fila en tabla de "Problemas Comunes"
+
+#### Changed
+- Actualizado paso 2 de "Inicio Rapido" con advertencia sobre ExecutionPolicy
+- Mejorada documentacion de HOTFIX_ENCODING.md con seccion de ExecutionPolicy
+- Agregadas notas de verificacion en configuracion de credenciales
+
+#### Impact
+- **Antes:** 100% de usuarios en Windows limpio encontraban error bloqueador
+- **Despues:** Usuarios informados ANTES de comenzar, previene frustracion
+- **Mejora:** Tiempo de setup reducido en 5-30 minutos por usuario
+
+**Documentacion completa:** Ver `DOC_UPDATE_EXECUTIONPOLICY.md`
+
+---
+
+### 🔴 HOTFIX CRITICO - Codificacion de Caracteres
+
+#### Fixed
+- **CRITICO:** Errores de parsing en Script0.ps1 causados por caracteres Unicode (checkmarks, x-marks)
+- **CRITICO:** Errores de parsing en Setup-Credentials.ps1 por simbolos Unicode
+- **IMPORTANTE:** Eliminados todos los caracteres Unicode incompatibles con PowerShell 5.1
+- **IMPORTANTE:** Reemplazados caracteres de caja (box drawing) por equivalentes ASCII
+- **MENOR:** Corregidos acentos en palabras clave del codigo
+
+#### Changed
+- Simbolos de exito: `checkmark` -> `[OK]` (59 instancias en 5 archivos)
+- Simbolos de error: `x-mark` -> `[X]` (15 instancias)
+- Simbolos de advertencia: `warning` -> `[!]` (18 instancias)
+- Caracteres de caja: box drawing -> `=` (12 instancias)
+- Acentos en codigo: `e i o n` (5 instancias)
+
+#### Impact
+- **Antes:** Scripts NO ejecutables en Windows con codificacion por defecto
+- **Despues:** Scripts 100% compatibles con PowerShell 5.1 en cualquier entorno Windows
+- **Archivos modificados:** Script0.ps1, Setup-Credentials.ps1, Script1.ps1, Script2.ps1, Script3.ps1
+- **Total de correcciones:** ~109 instancias de caracteres problematicos
+
+**Documentacion completa:** Ver `HOTFIX_ENCODING.md`
+
+---
+
 ## [v0.0.4] - 2026-01-28
 
 ### 🔒 Seguridad

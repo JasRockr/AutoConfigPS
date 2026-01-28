@@ -271,13 +271,13 @@ Write-Host ""
 
 $summary = @()
 if (Test-Path $domainCredPath) {
-    $summary += "  ✓ Credenciales de dominio: $domainCredPath"
+    $summary += "  [OK] Credenciales de dominio: $domainCredPath"
 }
 if (Test-Path $localCredPath) {
-    $summary += "  ✓ Credenciales locales: $localCredPath"
+    $summary += "  [OK] Credenciales locales: $localCredPath"
 }
 if (Test-Path $wifiCredPath) {
-    $summary += "  ✓ Contraseña Wi-Fi: $wifiCredPath"
+    $summary += "  [OK] Contrasena Wi-Fi: $wifiCredPath"
 }
 
 if ($summary.Count -eq 0) {

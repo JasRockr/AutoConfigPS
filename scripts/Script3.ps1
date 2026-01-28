@@ -225,7 +225,7 @@ function Install-WingetApp {
             $process.Kill()
             $process.WaitForExit()
 
-            Write-Host "    ⚠ Timeout (${TimeoutSeconds}s)" -ForegroundColor Yellow
+            Write-Host "    [!] Timeout (${TimeoutSeconds}s)" -ForegroundColor Yellow
             Write-ErrorLog "Timeout en instalación de $AppName después de ${TimeoutSeconds}s"
 
             return @{
@@ -247,11 +247,11 @@ function Install-WingetApp {
 
         if ($success) {
             $message = if ($exitCode -eq -1978335189) { "Ya instalado" } else { "Instalado correctamente" }
-            Write-Host "    ✓ $message (${duration.TotalSeconds:N1}s)" -ForegroundColor Green
+            Write-Host "    [OK] $message (${duration.TotalSeconds:N1}s)" -ForegroundColor Green
             Write-SuccessLog "$AppName: $message - Duración: ${duration.TotalSeconds:N1}s"
         } else {
             $message = "Error (Exit code: $exitCode)"
-            Write-Host "    ✗ $message" -ForegroundColor Red
+            Write-Host "    [X] $message" -ForegroundColor Red
             Write-ErrorLog "$AppName: $message - Duración: ${duration.TotalSeconds:N1}s"
 
             if ($errorOutput) {
@@ -269,7 +269,7 @@ function Install-WingetApp {
 
     } catch {
         $duration = (Get-Date) - $startTime
-        Write-Host "    ✗ Excepción: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "    [X] Excepción: $($_.Exception.Message)" -ForegroundColor Red
         Write-ErrorLog "Excepción en instalación de $AppName : $($_.Exception.Message)"
 
         return @{
@@ -327,7 +327,7 @@ function Install-NetworkApp {
     try {
         # Validar existencia del archivo
         if (-not (Test-Path $InstallerPath)) {
-            Write-Host "    ✗ Archivo no encontrado: $InstallerPath" -ForegroundColor Red
+            Write-Host "    [X] Archivo no encontrado: $InstallerPath" -ForegroundColor Red
             Write-ErrorLog "$AppName: Archivo no encontrado en $InstallerPath"
 
             return @{
@@ -366,7 +366,7 @@ function Install-NetworkApp {
             $process.Kill()
             $process.WaitForExit()
 
-            Write-Host "    ⚠ Timeout (${TimeoutSeconds}s)" -ForegroundColor Yellow
+            Write-Host "    [!] Timeout (${TimeoutSeconds}s)" -ForegroundColor Yellow
             Write-ErrorLog "Timeout en instalación de $AppName después de ${TimeoutSeconds}s"
 
             return @{
@@ -387,11 +387,11 @@ function Install-NetworkApp {
 
         if ($success) {
             $message = if ($exitCode -eq 3010) { "Instalado (requiere reinicio)" } else { "Instalado correctamente" }
-            Write-Host "    ✓ $message (${duration.TotalSeconds:N1}s)" -ForegroundColor Green
+            Write-Host "    [OK] $message (${duration.TotalSeconds:N1}s)" -ForegroundColor Green
             Write-SuccessLog "$AppName: $message - Duración: ${duration.TotalSeconds:N1}s"
         } else {
             $message = "Error (Exit code: $exitCode)"
-            Write-Host "    ✗ $message" -ForegroundColor Red
+            Write-Host "    [X] $message" -ForegroundColor Red
             Write-ErrorLog "$AppName: $message - Duración: ${duration.TotalSeconds:N1}s"
 
             if ($errorOutput) {
@@ -409,7 +409,7 @@ function Install-NetworkApp {
 
     } catch {
         $duration = (Get-Date) - $startTime
-        Write-Host "    ✗ Excepción: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "    [X] Excepción: $($_.Exception.Message)" -ForegroundColor Red
         Write-ErrorLog "Excepción en instalación de $AppName : $($_.Exception.Message)"
 
         return @{
@@ -520,18 +520,18 @@ try {
     $wingetAvailable = Get-Command winget -ErrorAction SilentlyContinue
 
     if (-not $wingetAvailable) {
-        Write-Host "  ⚠ Winget no está disponible en este sistema" -ForegroundColor Yellow
+        Write-Host "  [!] Winget no está disponible en este sistema" -ForegroundColor Yellow
         Write-ErrorLog "Winget no está disponible - las instalaciones de Winget fallarán"
     } else {
         winget source reset --force 2>&1 | Out-Null
         winget source remove -n winget 2>&1 | Out-Null
         winget source add -n winget -a https://cdn.winget.microsoft.com/cache 2>&1 | Out-Null
         winget source update 2>&1 | Out-Null
-        Write-Host "  ✓ Fuentes de Winget actualizadas" -ForegroundColor Green
+        Write-Host "  [OK] Fuentes de Winget actualizadas" -ForegroundColor Green
         Write-SuccessLog "Fuentes de Winget actualizadas correctamente."
     }
 } catch {
-    Write-Host "  ⚠ Error al actualizar fuentes de Winget: $($_.Exception.Message)" -ForegroundColor Yellow
+    Write-Host "  [!] Error al actualizar fuentes de Winget: $($_.Exception.Message)" -ForegroundColor Yellow
     Write-ErrorLog "Error al actualizar fuentes de Winget: $($_.Exception.Message)"
 }
 
@@ -556,7 +556,7 @@ if (Test-Path $appsPath) {
 
 # Si no hay apps de JSON ni de config, notificar
 if (-not $apps -or $apps.Count -eq 0) {
-    Write-Host "⚠ No se encontraron aplicaciones para instalar" -ForegroundColor Yellow
+    Write-Host "[!] No se encontraron aplicaciones para instalar" -ForegroundColor Yellow
     Write-SuccessLog "No se encontraron aplicaciones configuradas para instalación"
     Write-Host ""
 } else {
@@ -570,7 +570,7 @@ if (-not $apps -or $apps.Count -eq 0) {
     foreach ($app in $apps) {
         # Filtrar objetos que no representan aplicaciones válidas
         if (-not $app.Name -or -not $app.Source) {
-            Write-Host "⚠ Objeto no válido en lista de aplicaciones - omitiendo" -ForegroundColor Yellow
+            Write-Host "[!] Objeto no válido en lista de aplicaciones - omitiendo" -ForegroundColor Yellow
             Write-ErrorLog "Objeto no válido de aplicación en la lista"
             continue
         }
@@ -593,7 +593,7 @@ if (-not $apps -or $apps.Count -eq 0) {
             $installResults += $result
 
         } else {
-            Write-Host "  ✗ Origen desconocido para: $($app.Name) ($($app.Source))" -ForegroundColor Red
+            Write-Host "  [X] Origen desconocido para: $($app.Name) ($($app.Source))" -ForegroundColor Red
             Write-ErrorLog "Origen desconocido para $($app.Name): $($app.Source)"
 
             $installResults += @{
@@ -622,8 +622,8 @@ if (-not $apps -or $apps.Count -eq 0) {
     $totalCount = $installResults.Count
 
     Write-Host "Total de aplicaciones: $totalCount" -ForegroundColor Cyan
-    Write-Host "  ✓ Exitosas: $successCount" -ForegroundColor Green
-    Write-Host "  ✗ Fallidas: $failCount" -ForegroundColor $(if ($failCount -eq 0) { "Green" } else { "Red" })
+    Write-Host "  [OK] Exitosas: $successCount" -ForegroundColor Green
+    Write-Host "  [X] Fallidas: $failCount" -ForegroundColor $(if ($failCount -eq 0) { "Green" } else { "Red" })
     Write-Host "Tiempo total: $($totalDuration.ToString('mm\:ss'))" -ForegroundColor Cyan
     Write-Host ""
 
@@ -631,7 +631,7 @@ if (-not $apps -or $apps.Count -eq 0) {
     if ($successCount -gt 0) {
         Write-Host "Aplicaciones instaladas correctamente:" -ForegroundColor Green
         $installResults | Where-Object { $_.Success } | ForEach-Object {
-            Write-Host "  ✓ $($_.AppName) - $($_.Message) ($('{0:N1}' -f $_.Duration.TotalSeconds)s)" -ForegroundColor Green
+            Write-Host "  [OK] $($_.AppName) - $($_.Message) ($('{0:N1}' -f $_.Duration.TotalSeconds)s)" -ForegroundColor Green
         }
         Write-Host ""
     }
@@ -640,7 +640,7 @@ if (-not $apps -or $apps.Count -eq 0) {
     if ($failCount -gt 0) {
         Write-Host "Aplicaciones con errores:" -ForegroundColor Red
         $installResults | Where-Object { -not $_.Success } | ForEach-Object {
-            Write-Host "  ✗ $($_.AppName) - $($_.Message)" -ForegroundColor Red
+            Write-Host "  [X] $($_.AppName) - $($_.Message)" -ForegroundColor Red
         }
         Write-Host ""
     }

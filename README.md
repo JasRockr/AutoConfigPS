@@ -104,6 +104,85 @@
 
 ---
 
+## ⚠️ IMPORTANTE: Habilitar Ejecución de Scripts PowerShell
+
+**PREREQUISITO OBLIGATORIO:** Por defecto, Windows **NO permite** la ejecución de scripts de PowerShell. Debes habilitarlo antes de usar AutoConfigPS.
+
+### Verificar Estado Actual
+
+```powershell
+# Abrir PowerShell como Administrador y ejecutar:
+Get-ExecutionPolicy
+```
+
+**Resultado esperado:**
+- `Restricted` → ❌ Scripts bloqueados (configuración por defecto)
+- `RemoteSigned` o `Unrestricted` → ✅ Scripts permitidos
+
+### Habilitar Ejecución de Scripts
+
+**Opción A: RemoteSigned (RECOMENDADO - Seguro)**
+
+```powershell
+# Ejecutar en PowerShell como Administrador:
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+```
+
+- ✅ Permite scripts locales
+- ✅ Requiere firma digital para scripts descargados
+- ✅ Balance entre seguridad y funcionalidad
+- ✅ **Recomendado para entornos corporativos**
+
+**Opción B: Bypass (Para pruebas/desarrollo)**
+
+```powershell
+# Ejecutar en PowerShell como Administrador:
+Set-ExecutionPolicy Bypass -Scope CurrentUser -Force
+```
+
+- ⚠️ Permite todos los scripts sin restricción
+- ⚠️ Menos seguro, solo para entornos de prueba
+- ⚠️ NO recomendado para producción
+
+**Opción C: Ejecución temporal (Sin cambiar configuración)**
+
+```powershell
+# Ejecutar scripts con bypass temporal:
+powershell -ExecutionPolicy Bypass -File .\init.bat
+```
+
+- ✅ No modifica configuración del sistema
+- ✅ Solo aplica a esta ejecución
+- ⚠️ Debes usar este comando cada vez
+
+### Verificar Cambio
+
+```powershell
+Get-ExecutionPolicy
+# Debe mostrar: RemoteSigned (o Bypass si elegiste Opción B)
+```
+
+### 🔒 Revertir Cambios (Opcional)
+
+Si deseas restaurar la configuración por defecto después de usar AutoConfigPS:
+
+```powershell
+Set-ExecutionPolicy Restricted -Scope CurrentUser -Force
+```
+
+### 📖 Más Información sobre Políticas de Ejecución
+
+| Política | Descripción | Seguridad | Uso Recomendado |
+|----------|-------------|-----------|-----------------|
+| `Restricted` | No permite ningún script | 🔒 Máxima | Por defecto en Windows |
+| `RemoteSigned` | Scripts locales OK, remotos requieren firma | 🔒 Alta | **Producción/Corporativo** |
+| `Unrestricted` | Todos los scripts, advierte sobre remotos | ⚠️ Media | Desarrollo |
+| `Bypass` | Todos los scripts sin restricción | ❌ Baja | Solo pruebas |
+
+**Referencia oficial:** [about_Execution_Policies - Microsoft Learn](https://learn.microsoft.com/es-es/powershell/module/microsoft.powershell.core/about/about_execution_policies)
+
+---
+
 ## 🚀 Inicio Rápido
 
 ### 1. Descargar el Proyecto
@@ -116,7 +195,10 @@ cd AutoConfigPS
 ### 2. Configurar Credenciales (Recomendado - Seguro)
 
 ```powershell
-# Ejecutar como administrador
+# IMPORTANTE: Abrir PowerShell como ADMINISTRADOR
+# Verificar que ExecutionPolicy esté habilitada (ver sección anterior)
+
+# Ejecutar asistente de credenciales:
 .\scripts\Setup-Credentials.ps1
 ```
 
@@ -124,6 +206,8 @@ Sigue el asistente interactivo para configurar:
 - Credenciales de dominio (obligatorio)
 - Credenciales de usuario local (opcional)
 - Contraseña de Wi-Fi (recomendado)
+
+**Nota:** Si obtienes error de "no se puede cargar el archivo", verifica que ejecutaste `Set-ExecutionPolicy RemoteSigned` como se indica arriba.
 
 ### 3. Crear config.ps1
 
@@ -400,6 +484,30 @@ Remove-Variable -Name PlainTextPassword
 
 ## 🔧 Solución de Problemas
 
+### ⚠️ ERROR: "No se puede cargar el archivo... está deshabilitada la ejecución de scripts"
+
+**Problema:** Al ejecutar cualquier script de PowerShell obtienes error similar a:
+```
+No se puede cargar el archivo C:\AutoConfigPS\scripts\Script0.ps1 porque
+la ejecución de scripts está deshabilitada en este sistema.
+```
+
+**Causa:** Política de ejecución de PowerShell está en `Restricted` (configuración por defecto de Windows)
+
+**Solución:**
+```powershell
+# Abrir PowerShell como Administrador y ejecutar:
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+
+# Verificar cambio:
+Get-ExecutionPolicy
+# Debe mostrar: RemoteSigned
+```
+
+**Más información:** Ver sección [Habilitar Ejecución de Scripts PowerShell](#️-importante-habilitar-ejecución-de-scripts-powershell) al inicio de este README.
+
+---
+
 ### Script0.ps1 Falla (Pre-validación)
 
 **Problema:** Validación crítica falla
@@ -498,6 +606,7 @@ notepad C:\Logs\setup_success.log
 
 | Problema | Causa | Solución |
 |----------|-------|----------|
+| **"Ejecución de scripts deshabilitada"** | ExecutionPolicy en Restricted | `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force` |
 | Script no inicia | Sin privilegios admin | Ejecutar como admin |
 | Wi-Fi no conecta | SSID/contraseña incorrecta | Verificar config.ps1 |
 | Unión al dominio falla | Sin conectividad a DC | Verificar red y DNS |

@@ -51,7 +51,7 @@ function Write-CheckResult {
         [string]$Details = ""
     )
 
-    $status = if ($Passed) { "[✓]" } else { "[✗]" }
+    $status = if ($Passed) { "[OK]" } else { "[X]" }
     $color = if ($Passed) { "Green" } else { "Red" }
     $detailsText = if ($Details) { " - $Details" } else { "" }
 
@@ -61,9 +61,9 @@ function Write-CheckResult {
 function Write-SectionHeader {
     param([string]$Title)
     Write-Host ""
-    Write-Host "═══════════════════════════════════════" -ForegroundColor Cyan
+    Write-Host "=======================================" -ForegroundColor Cyan
     Write-Host "  $Title" -ForegroundColor Cyan
-    Write-Host "═══════════════════════════════════════" -ForegroundColor Cyan
+    Write-Host "=======================================" -ForegroundColor Cyan
     Write-Host ""
 }
 
@@ -73,13 +73,13 @@ function Write-SectionHeader {
 
 Clear-Host
 Write-Host ""
-Write-Host "╔═══════════════════════════════════════════════╗" -ForegroundColor Magenta
-Write-Host "║                                               ║" -ForegroundColor Magenta
-Write-Host "║       AutoConfigPS - Pre-validación          ║" -ForegroundColor Magenta
-Write-Host "║                                               ║" -ForegroundColor Magenta
-Write-Host "╚═══════════════════════════════════════════════╝" -ForegroundColor Magenta
+Write-Host "===============================================" -ForegroundColor Magenta
+Write-Host "                                               " -ForegroundColor Magenta
+Write-Host "       AutoConfigPS - Pre-validacion          " -ForegroundColor Magenta
+Write-Host "                                               " -ForegroundColor Magenta
+Write-Host "===============================================" -ForegroundColor Magenta
 Write-Host ""
-Write-Host "Versión: $ScriptVersion" -ForegroundColor Gray
+Write-Host "Version: $ScriptVersion" -ForegroundColor Gray
 Write-Host "Validando requisitos del sistema..." -ForegroundColor Gray
 Write-Host ""
 
@@ -374,9 +374,9 @@ if (-not $networkTest) {
 # ====================================
 
 Write-Host ""
-Write-Host "╔═══════════════════════════════════════════════╗" -ForegroundColor Magenta
-Write-Host "║           RESUMEN DE VALIDACIÓN               ║" -ForegroundColor Magenta
-Write-Host "╚═══════════════════════════════════════════════╝" -ForegroundColor Magenta
+Write-Host "===============================================" -ForegroundColor Magenta
+Write-Host "           RESUMEN DE VALIDACION               " -ForegroundColor Magenta
+Write-Host "===============================================" -ForegroundColor Magenta
 Write-Host ""
 
 # Estadísticas
@@ -387,26 +387,26 @@ $criticalChecks = ($checks | Where-Object { $_.Critical }).Count
 $criticalFailed = ($checks | Where-Object { $_.Critical -and -not $_.Passed }).Count
 
 Write-Host "Total de validaciones: $totalChecks" -ForegroundColor Cyan
-Write-Host "  ✓ Pasadas: $passedChecks" -ForegroundColor Green
-Write-Host "  ✗ Fallidas: $failedChecks" -ForegroundColor $(if ($failedChecks -eq 0) { "Green" } else { "Red" })
+Write-Host "  [+] Pasadas: $passedChecks" -ForegroundColor Green
+Write-Host "  [-] Fallidas: $failedChecks" -ForegroundColor $(if ($failedChecks -eq 0) { "Green" } else { "Red" })
 Write-Host ""
-Write-Host "Validaciones críticas: $criticalChecks" -ForegroundColor Yellow
-Write-Host "  ✗ Fallidas críticas: $criticalFailed" -ForegroundColor $(if ($criticalFailed -eq 0) { "Green" } else { "Red" })
+Write-Host "Validaciones criticas: $criticalChecks" -ForegroundColor Yellow
+Write-Host "  [-] Fallidas criticas: $criticalFailed" -ForegroundColor $(if ($criticalFailed -eq 0) { "Green" } else { "Red" })
 Write-Host ""
 
 # Determinar si se puede continuar
 $canProceed = $criticalFailed -eq 0
 
 if ($canProceed) {
-    Write-Host "════════════════════════════════════════" -ForegroundColor Green
-    Write-Host "   ✓ SISTEMA LISTO PARA CONFIGURACIÓN" -ForegroundColor Green
-    Write-Host "════════════════════════════════════════" -ForegroundColor Green
+    Write-Host "========================================" -ForegroundColor Green
+    Write-Host "   [OK] SISTEMA LISTO PARA CONFIGURACION" -ForegroundColor Green
+    Write-Host "========================================" -ForegroundColor Green
     Write-Host ""
 
     if ($failedChecks -gt 0) {
-        Write-Host "ADVERTENCIAS NO CRÍTICAS:" -ForegroundColor Yellow
+        Write-Host "ADVERTENCIAS NO CRITICAS:" -ForegroundColor Yellow
         $checks | Where-Object { -not $_.Passed -and -not $_.Critical } | ForEach-Object {
-            Write-Host "  ⚠ $($_.Check): $($_.Details)" -ForegroundColor Yellow
+            Write-Host "  [!] $($_.Check): $($_.Details)" -ForegroundColor Yellow
         }
         Write-Host ""
         Write-Host "Puedes continuar, pero considera resolver estas advertencias." -ForegroundColor Yellow
@@ -418,14 +418,14 @@ if ($canProceed) {
     exit 0
 
 } else {
-    Write-Host "════════════════════════════════════════" -ForegroundColor Red
-    Write-Host "   ✗ NO SE PUEDE CONTINUAR" -ForegroundColor Red
-    Write-Host "════════════════════════════════════════" -ForegroundColor Red
+    Write-Host "========================================" -ForegroundColor Red
+    Write-Host "   [X] NO SE PUEDE CONTINUAR" -ForegroundColor Red
+    Write-Host "========================================" -ForegroundColor Red
     Write-Host ""
 
-    Write-Host "PROBLEMAS CRÍTICOS ENCONTRADOS:" -ForegroundColor Red
+    Write-Host "PROBLEMAS CRITICOS ENCONTRADOS:" -ForegroundColor Red
     $checks | Where-Object { $_.Critical -and -not $_.Passed } | ForEach-Object {
-        Write-Host "  ✗ $($_.Check): $($_.Details)" -ForegroundColor Red
+        Write-Host "  [X] $($_.Check): $($_.Details)" -ForegroundColor Red
     }
     Write-Host ""
 

@@ -196,13 +196,13 @@ function Test-DomainController {
 
                 if ($dcRecords -and $dcRecords.Count -gt 0) {
                     $dcName = $dcRecords[0].NameTarget
-                    Write-Host "  ✓ Controlador de dominio encontrado via DNS: $dcName" -ForegroundColor Green
+                    Write-Host "  [OK] Controlador de dominio encontrado via DNS: $dcName" -ForegroundColor Green
                     Write-SuccessLog "DC encontrado via DNS SRV: $dcName"
 
                     # Intentar hacer ping al DC
                     Write-Host "  → Verificando conectividad con DC..." -ForegroundColor Gray
                     if (Test-Connection -ComputerName $dcName -Count 2 -Quiet -ErrorAction SilentlyContinue) {
-                        Write-Host "  ✓ DC alcanzable: $dcName" -ForegroundColor Green
+                        Write-Host "  [OK] DC alcanzable: $dcName" -ForegroundColor Green
                         Write-SuccessLog "DC alcanzable: $dcName"
 
                         # Validación exitosa
@@ -210,12 +210,12 @@ function Test-DomainController {
                         Write-SuccessLog "Validación de DC exitosa - Dominio: $DomainName, DC: $dcName"
                         return $true
                     } else {
-                        Write-Host "  ⚠ DC encontrado pero no responde a ping" -ForegroundColor Yellow
+                        Write-Host "  [!] DC encontrado pero no responde a ping" -ForegroundColor Yellow
                         Write-ErrorLog "DC encontrado pero no responde: $dcName (intento $attempt/$MaxRetries)"
                     }
                 }
             } catch {
-                Write-Host "  ⚠ No se pudo resolver DC via DNS SRV" -ForegroundColor Yellow
+                Write-Host "  [!] No se pudo resolver DC via DNS SRV" -ForegroundColor Yellow
                 Write-ErrorLog "Error en resolución DNS SRV: $($_.Exception.Message)"
             }
 
@@ -227,10 +227,10 @@ function Test-DomainController {
                     Select-Object -First 1
 
                 if ($domainIP) {
-                    Write-Host "  ✓ Dominio resuelto a: $($domainIP.IPAddress)" -ForegroundColor Green
+                    Write-Host "  [OK] Dominio resuelto a: $($domainIP.IPAddress)" -ForegroundColor Green
 
                     if (Test-Connection -ComputerName $domainIP.IPAddress -Count 2 -Quiet -ErrorAction SilentlyContinue) {
-                        Write-Host "  ✓ Servidor de dominio alcanzable" -ForegroundColor Green
+                        Write-Host "  [OK] Servidor de dominio alcanzable" -ForegroundColor Green
                         Write-SuccessLog "Dominio alcanzable via IP: $($domainIP.IPAddress)"
 
                         Write-Host "✅ Validación de DC completada (método alternativo)" -ForegroundColor Green
@@ -238,7 +238,7 @@ function Test-DomainController {
                     }
                 }
             } catch {
-                Write-Host "  ⚠ No se pudo resolver dominio directamente" -ForegroundColor Yellow
+                Write-Host "  [!] No se pudo resolver dominio directamente" -ForegroundColor Yellow
                 Write-ErrorLog "Error en resolución DNS directa: $($_.Exception.Message)"
             }
 
@@ -250,22 +250,22 @@ function Test-DomainController {
                     $dcFromNltest = $nltestResult | Select-String -Pattern "DC: (.+)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
 
                     if ($dcFromNltest) {
-                        Write-Host "  ✓ DC encontrado con nltest: $dcFromNltest" -ForegroundColor Green
+                        Write-Host "  [OK] DC encontrado con nltest: $dcFromNltest" -ForegroundColor Green
                         Write-SuccessLog "DC encontrado con nltest: $dcFromNltest"
 
                         if (Test-Connection -ComputerName $dcFromNltest -Count 2 -Quiet -ErrorAction SilentlyContinue) {
-                            Write-Host "  ✓ DC alcanzable via nltest" -ForegroundColor Green
+                            Write-Host "  [OK] DC alcanzable via nltest" -ForegroundColor Green
                             Write-Host "✅ Validación de DC completada (nltest)" -ForegroundColor Green
                             return $true
                         }
                     }
                 }
             } catch {
-                Write-Host "  ⚠ nltest no disponible o falló" -ForegroundColor Yellow
+                Write-Host "  [!] nltest no disponible o falló" -ForegroundColor Yellow
             }
 
         } catch {
-            Write-Host "  ⚠ Error en validación: $($_.Exception.Message)" -ForegroundColor Yellow
+            Write-Host "  [!] Error en validación: $($_.Exception.Message)" -ForegroundColor Yellow
             Write-ErrorLog "Error en validación de DC (intento $attempt/$MaxRetries): $($_.Exception.Message)"
         }
 
@@ -335,13 +335,13 @@ function Test-ComputerNameInAD {
             $result = $searcher.FindOne()
 
             if ($result) {
-                Write-Host "  ⚠ Nombre '$ComputerName' ya existe en AD" -ForegroundColor Yellow
+                Write-Host "  [!] Nombre '$ComputerName' ya existe en AD" -ForegroundColor Yellow
                 Write-Host "    DN: $($result.Properties['distinguishedname'])" -ForegroundColor Gray
                 Write-ErrorLog "Nombre de equipo '$ComputerName' ya existe en AD"
 
                 $nameExists = $true
             } else {
-                Write-Host "  ✓ Nombre '$ComputerName' disponible" -ForegroundColor Green
+                Write-Host "  [OK] Nombre '$ComputerName' disponible" -ForegroundColor Green
                 Write-SuccessLog "Nombre '$ComputerName' disponible en AD"
 
                 return @{
@@ -351,7 +351,7 @@ function Test-ComputerNameInAD {
                 }
             }
         } catch {
-            Write-Host "  ⚠ No se pudo verificar con DirectorySearcher" -ForegroundColor Yellow
+            Write-Host "  [!] No se pudo verificar con DirectorySearcher" -ForegroundColor Yellow
             Write-ErrorLog "Error en DirectorySearcher: $($_.Exception.Message)"
             $nameExists = $false  # Asumimos que está disponible si no podemos verificar
         }
@@ -385,11 +385,11 @@ function Test-ComputerNameInAD {
 
                 if (-not $resultAlt) {
                     $alternativeName = $testName
-                    Write-Host "  ✓ Nombre alternativo generado: $alternativeName" -ForegroundColor Green
+                    Write-Host "  [OK] Nombre alternativo generado: $alternativeName" -ForegroundColor Green
                     Write-SuccessLog "Nombre alternativo generado: $alternativeName"
                     break
                 } else {
-                    Write-Host "  ⚠ Intento $i/$maxAttempts: $testName también existe" -ForegroundColor Yellow
+                    Write-Host "  [!] Intento $i/$maxAttempts: $testName también existe" -ForegroundColor Yellow
                 }
             }
 
@@ -419,7 +419,7 @@ function Test-ComputerNameInAD {
         }
 
         # Si no pudimos verificar, asumimos que está disponible
-        Write-Host "  ⚠ No se pudo verificar nombre en AD - continuando" -ForegroundColor Yellow
+        Write-Host "  [!] No se pudo verificar nombre en AD - continuando" -ForegroundColor Yellow
         Write-SuccessLog "Verificación de nombre omitida - continuando con nombre actual"
 
         return @{
@@ -429,7 +429,7 @@ function Test-ComputerNameInAD {
         }
 
     } catch {
-        Write-Host "  ⚠ Error en validación: $($_.Exception.Message)" -ForegroundColor Yellow
+        Write-Host "  [!] Error en validación: $($_.Exception.Message)" -ForegroundColor Yellow
         Write-ErrorLog "Error en Test-ComputerNameInAD: $($_.Exception.Message)"
 
         # En caso de error, permitir continuar
@@ -467,7 +467,7 @@ $Credential = New-Object System.Management.Automation.PSCredential ($Useradmin, 
 # Ruta de la clave del registro para el inicio de sesión automático
 $AutoLoginKey = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
 
-# Convertir SecureString a texto plano (⚠️ Requerido por registro de Windows)
+# Convertir SecureString a texto plano ([!]️ Requerido por registro de Windows)
 $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Credential.Password)
 $PlainTextPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
 
@@ -519,7 +519,7 @@ try {
 
             try {
                 Rename-Computer -NewName $nameCheck.AlternativeName -Force -PassThru | Out-Null
-                Write-Host "  ✓ Nombre del equipo cambiado a: $($nameCheck.AlternativeName)" -ForegroundColor Green
+                Write-Host "  [OK] Nombre del equipo cambiado a: $($nameCheck.AlternativeName)" -ForegroundColor Green
                 Write-SuccessLog "Nombre cambiado exitosamente a: $($nameCheck.AlternativeName)"
                 $currentComputerName = $nameCheck.AlternativeName
             } catch {

@@ -203,12 +203,12 @@ function Test-NetworkConnectivity {
             } | Select-Object -First 1
 
             if (-not $wifiAdapter) {
-                Write-Host "  ⚠ Adaptador Wi-Fi no está activo" -ForegroundColor Yellow
+                Write-Host "  [!] Adaptador Wi-Fi no está activo" -ForegroundColor Yellow
                 Start-Sleep -Seconds $DelaySeconds
                 continue
             }
 
-            Write-Host "  ✓ Adaptador Wi-Fi activo: $($wifiAdapter.Name)" -ForegroundColor Green
+            Write-Host "  [OK] Adaptador Wi-Fi activo: $($wifiAdapter.Name)" -ForegroundColor Green
 
             # 2. Verificar IP asignada (no APIPA)
             $ipAddress = Get-NetIPAddress -InterfaceIndex $wifiAdapter.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue |
@@ -216,12 +216,12 @@ function Test-NetworkConnectivity {
                 Select-Object -First 1
 
             if (-not $ipAddress) {
-                Write-Host "  ⚠ IP válida no asignada" -ForegroundColor Yellow
+                Write-Host "  [!] IP válida no asignada" -ForegroundColor Yellow
                 Start-Sleep -Seconds $DelaySeconds
                 continue
             }
 
-            Write-Host "  ✓ IP asignada: $($ipAddress.IPAddress)" -ForegroundColor Green
+            Write-Host "  [OK] IP asignada: $($ipAddress.IPAddress)" -ForegroundColor Green
             Write-SuccessLog "IP asignada: $($ipAddress.IPAddress) en interfaz $($wifiAdapter.Name)"
 
             # 3. Verificar gateway predeterminado
@@ -230,29 +230,29 @@ function Test-NetworkConnectivity {
                 Select-Object -First 1
 
             if (-not $gateway) {
-                Write-Host "  ⚠ Gateway no encontrado" -ForegroundColor Yellow
+                Write-Host "  [!] Gateway no encontrado" -ForegroundColor Yellow
                 Start-Sleep -Seconds $DelaySeconds
                 continue
             }
 
-            Write-Host "  ✓ Gateway encontrado: $($gateway.NextHop)" -ForegroundColor Green
+            Write-Host "  [OK] Gateway encontrado: $($gateway.NextHop)" -ForegroundColor Green
 
             # 4. Verificar acceso al gateway
             $gatewayReachable = Test-Connection -ComputerName $gateway.NextHop -Count 2 -Quiet -ErrorAction SilentlyContinue
 
             if (-not $gatewayReachable) {
-                Write-Host "  ⚠ Gateway no alcanzable" -ForegroundColor Yellow
+                Write-Host "  [!] Gateway no alcanzable" -ForegroundColor Yellow
                 Start-Sleep -Seconds $DelaySeconds
                 continue
             }
 
-            Write-Host "  ✓ Gateway alcanzable" -ForegroundColor Green
+            Write-Host "  [OK] Gateway alcanzable" -ForegroundColor Green
 
             # 5. Verificar DNS (opcional - puede fallar si DNS interno)
             $dnsServers = Get-DnsClientServerAddress -InterfaceIndex $wifiAdapter.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue
 
             if ($dnsServers -and $dnsServers.ServerAddresses.Count -gt 0) {
-                Write-Host "  ✓ Servidores DNS configurados: $($dnsServers.ServerAddresses -join ', ')" -ForegroundColor Green
+                Write-Host "  [OK] Servidores DNS configurados: $($dnsServers.ServerAddresses -join ', ')" -ForegroundColor Green
                 Write-SuccessLog "Servidores DNS: $($dnsServers.ServerAddresses -join ', ')"
             }
 
@@ -262,7 +262,7 @@ function Test-NetworkConnectivity {
             return $true
 
         } catch {
-            Write-Host "  ⚠ Error en validación: $($_.Exception.Message)" -ForegroundColor Yellow
+            Write-Host "  [!] Error en validación: $($_.Exception.Message)" -ForegroundColor Yellow
             Write-ErrorLog "Error en validación de conectividad (intento $i/$MaxRetries): $($_.Exception.Message)"
         }
 
@@ -438,7 +438,7 @@ if (-not $Username -or -not (Get-Variable -Name 'SecurePassword' -ErrorAction Si
     # Ruta de la clave del registro para el inicio de sesión automático
     $AutoLoginKey = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
 
-    #! Convertir SecureString a texto plano (⚠️ Requerido por registro de Windows)
+    #! Convertir SecureString a texto plano ([!]️ Requerido por registro de Windows)
     $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Credential.Password)
     $PlainTextPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
 
