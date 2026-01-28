@@ -102,7 +102,7 @@ if (-not (Test-Path $logDirectory)) {
 if (-not (Test-Path $errorLog)) {
     Write-Host "Creando archivo de log de errores..." -ForegroundColor Yellow
     New-Item -Path $errorLog -ItemType File -Force | Out-Null
-    icacls $errorLog /grant Everyone:F /inheritance:r | Out-Null #! Permisos de escritura para todos
+    icacls $errorLog /inheritance:r /grant "BUILTIN\Administrators:(F)" /grant "SYSTEM:(F)" | Out-Null # Permisos restrictivos (solo Administrators y SYSTEM)
     Write-Host "Archivo de log de errores creado correctamente." -ForegroundColor Green
     Write-SuccessLog "Archivo de log de errores creado correctamente: $errorLog"
 } else {
@@ -114,7 +114,7 @@ if (-not (Test-Path $errorLog)) {
 if (-not (Test-Path $successLog)) {
     Write-Host "Creando archivo de log de éxito..." -ForegroundColor Yellow
     New-Item -Path $successLog -ItemType File -Force | Out-Null
-    icacls $successLog /grant Everyone:F /inheritance:r | Out-Null #! Permisos de escritura para todos
+    icacls $successLog /inheritance:r /grant "BUILTIN\Administrators:(F)" /grant "SYSTEM:(F)" | Out-Null # Permisos restrictivos (solo Administrators y SYSTEM)
     Write-Host "Archivo de log de éxito creado correctamente." -ForegroundColor Green
     Write-SuccessLog "Archivo de log de éxito creado correctamente: $successLog"
 } else {

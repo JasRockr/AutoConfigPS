@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command \"Get-Content ''C:\\Users\\yquintero\\Desktop\\json\\AutoConfigPS\\LOG_IMPLEMENTACION.md'' | Measure-Object -Line\")"
+    ]
+  }
+}

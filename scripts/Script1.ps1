@@ -134,9 +134,11 @@ if (-not (Test-Path $logDirectory)) {
 if (-not (Test-Path $errorLog)) {
     Write-Host "Creando archivo de log de errores..." -ForegroundColor Yellow
     New-Item -Path $errorLog -ItemType File -Force | Out-Null
-    icacls $errorLog /grant Everyone:F /inheritance:r | Out-Null #! Permisos de escritura para todos
-    Write-Host "Archivo de log de errores creado correctamente." -ForegroundColor Green
-    Write-SuccessLog "Archivo de log de errores creado correctamente: $errorLog"
+
+    # Establecer permisos restrictivos (solo Administrators y SYSTEM)
+    icacls $errorLog /inheritance:r /grant "BUILTIN\Administrators:(F)" /grant "SYSTEM:(F)" | Out-Null
+    Write-Host "Archivo de log de errores creado correctamente con permisos restrictivos." -ForegroundColor Green
+    Write-SuccessLog "Archivo de log de errores creado correctamente: $errorLog (permisos: Administrators+SYSTEM)"
 } else {
     Write-Host "El archivo de log de errores ya existe." -ForegroundColor Yellow
     Write-ErrorLog "El archivo de log de errores ya existe: $errorLog"
@@ -146,12 +148,134 @@ if (-not (Test-Path $errorLog)) {
 if (-not (Test-Path $successLog)) {
     Write-Host "Creando archivo de log de éxito..." -ForegroundColor Yellow
     New-Item -Path $successLog -ItemType File -Force | Out-Null
-    icacls $successLog /grant Everyone:F /inheritance:r | Out-Null #! Permisos de escritura para todos
-    Write-Host "Archivo de log de éxito creado correctamente." -ForegroundColor Green
-    Write-SuccessLog "Archivo de log de éxito creado correctamente: $successLog"
+
+    # Establecer permisos restrictivos (solo Administrators y SYSTEM)
+    icacls $successLog /inheritance:r /grant "BUILTIN\Administrators:(F)" /grant "SYSTEM:(F)" | Out-Null
+    Write-Host "Archivo de log de éxito creado correctamente con permisos restrictivos." -ForegroundColor Green
+    Write-SuccessLog "Archivo de log de éxito creado correctamente: $successLog (permisos: Administrators+SYSTEM)"
 } else {
     Write-Host "El archivo de log de éxito ya existe." -ForegroundColor Yellow
     Write-SuccessLog "El archivo de log de éxito ya existe: $successLog"
+}
+
+#! ---------------------------------------------------------------
+
+# ----------------------------------------------------------------
+# Función de validación de conectividad de red
+# ----------------------------------------------------------------
+function Test-NetworkConnectivity {
+    <#
+    .SYNOPSIS
+        Valida la conectividad de red real después de conectar a Wi-Fi
+
+    .DESCRIPTION
+        Verifica:
+        - Adaptador Wi-Fi activo
+        - IP válida asignada (no APIPA 169.254.x.x)
+        - Gateway predeterminado accesible
+        - Conectividad con DNS
+
+    .PARAMETER MaxRetries
+        Número máximo de intentos de validación (por defecto 5)
+
+    .PARAMETER DelaySeconds
+        Segundos de espera entre intentos (por defecto 5)
+
+    .RETURNS
+        $true si la conectividad es válida, $false si falla
+    #>
+    param(
+        [int]$MaxRetries = 5,
+        [int]$DelaySeconds = 5
+    )
+
+    Write-Host "Validando conectividad de red..." -ForegroundColor Cyan
+    Write-SuccessLog "Iniciando validación de conectividad de red"
+
+    for ($i = 1; $i -le $MaxRetries; $i++) {
+        Write-Host "  Intento $i/$MaxRetries..." -ForegroundColor Gray
+
+        try {
+            # 1. Verificar adaptador Wi-Fi activo
+            $wifiAdapter = Get-NetAdapter | Where-Object {
+                $_.Status -eq "Up" -and
+                ($_.InterfaceDescription -match "Wireless|Wi-Fi|802.11")
+            } | Select-Object -First 1
+
+            if (-not $wifiAdapter) {
+                Write-Host "  ⚠ Adaptador Wi-Fi no está activo" -ForegroundColor Yellow
+                Start-Sleep -Seconds $DelaySeconds
+                continue
+            }
+
+            Write-Host "  ✓ Adaptador Wi-Fi activo: $($wifiAdapter.Name)" -ForegroundColor Green
+
+            # 2. Verificar IP asignada (no APIPA)
+            $ipAddress = Get-NetIPAddress -InterfaceIndex $wifiAdapter.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+                Where-Object { $_.IPAddress -notmatch "^169\.254\." } |
+                Select-Object -First 1
+
+            if (-not $ipAddress) {
+                Write-Host "  ⚠ IP válida no asignada" -ForegroundColor Yellow
+                Start-Sleep -Seconds $DelaySeconds
+                continue
+            }
+
+            Write-Host "  ✓ IP asignada: $($ipAddress.IPAddress)" -ForegroundColor Green
+            Write-SuccessLog "IP asignada: $($ipAddress.IPAddress) en interfaz $($wifiAdapter.Name)"
+
+            # 3. Verificar gateway predeterminado
+            $gateway = Get-NetRoute -DestinationPrefix "0.0.0.0/0" -ErrorAction SilentlyContinue |
+                Where-Object { $_.InterfaceIndex -eq $wifiAdapter.ifIndex } |
+                Select-Object -First 1
+
+            if (-not $gateway) {
+                Write-Host "  ⚠ Gateway no encontrado" -ForegroundColor Yellow
+                Start-Sleep -Seconds $DelaySeconds
+                continue
+            }
+
+            Write-Host "  ✓ Gateway encontrado: $($gateway.NextHop)" -ForegroundColor Green
+
+            # 4. Verificar acceso al gateway
+            $gatewayReachable = Test-Connection -ComputerName $gateway.NextHop -Count 2 -Quiet -ErrorAction SilentlyContinue
+
+            if (-not $gatewayReachable) {
+                Write-Host "  ⚠ Gateway no alcanzable" -ForegroundColor Yellow
+                Start-Sleep -Seconds $DelaySeconds
+                continue
+            }
+
+            Write-Host "  ✓ Gateway alcanzable" -ForegroundColor Green
+
+            # 5. Verificar DNS (opcional - puede fallar si DNS interno)
+            $dnsServers = Get-DnsClientServerAddress -InterfaceIndex $wifiAdapter.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue
+
+            if ($dnsServers -and $dnsServers.ServerAddresses.Count -gt 0) {
+                Write-Host "  ✓ Servidores DNS configurados: $($dnsServers.ServerAddresses -join ', ')" -ForegroundColor Green
+                Write-SuccessLog "Servidores DNS: $($dnsServers.ServerAddresses -join ', ')"
+            }
+
+            # Todas las validaciones pasaron
+            Write-Host "✅ Conectividad de red validada correctamente" -ForegroundColor Green
+            Write-SuccessLog "Conectividad de red validada: IP=$($ipAddress.IPAddress), Gateway=$($gateway.NextHop)"
+            return $true
+
+        } catch {
+            Write-Host "  ⚠ Error en validación: $($_.Exception.Message)" -ForegroundColor Yellow
+            Write-ErrorLog "Error en validación de conectividad (intento $i/$MaxRetries): $($_.Exception.Message)"
+        }
+
+        if ($i -lt $MaxRetries) {
+            Write-Host "  Esperando $DelaySeconds segundos antes del siguiente intento..." -ForegroundColor Gray
+            Start-Sleep -Seconds $DelaySeconds
+        }
+    }
+
+    # Si llegamos aquí, todas las validaciones fallaron
+    Write-Host "❌ No se pudo validar conectividad después de $MaxRetries intentos" -ForegroundColor Red
+    Write-ErrorLog "Fallo en validación de conectividad después de $MaxRetries intentos"
+    return $false
 }
 
 #! ---------------------------------------------------------------
@@ -166,11 +290,27 @@ Write-SuccessLog "Configurando Red Wi-Fi..."
 # Start-Sleep -Seconds $Delay
 
 # ----------------------------------------------------------------
-# Configurar conexíon de red automático (red por defecto 'RedSSID') 
+# Configurar conexión de red automático (red por defecto 'RedSSID')
 # ----------------------------------------------------------------
-$SecurePassword = ConvertTo-SecureString $NetworkPass -AsPlainText -Force # Contraseña de Red
-#! Convertir SecureString a texto plano (⚠️ Riesgo de seguridad)
-$BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecurePassword)
+
+# Soporte para credenciales cifradas y texto plano
+if (Get-Variable -Name 'SecureNetworkPass' -ErrorAction SilentlyContinue) {
+    # Ya se proporcionó SecureString (credenciales cifradas)
+    Write-Host "Usando credenciales Wi-Fi cifradas" -ForegroundColor Green
+    Write-SuccessLog "Credenciales Wi-Fi: usando formato cifrado"
+    $WifiSecurePass = $SecureNetworkPass
+} elseif (Get-Variable -Name 'NetworkPass' -ErrorAction SilentlyContinue) {
+    # Texto plano proporcionado (método legacy)
+    Write-Host "ADVERTENCIA: Usando contraseña Wi-Fi en texto plano" -ForegroundColor Yellow
+    Write-SuccessLog "Credenciales Wi-Fi: usando formato texto plano (no recomendado)"
+    $WifiSecurePass = ConvertTo-SecureString $NetworkPass -AsPlainText -Force
+} else {
+    Write-ErrorLog "No se proporcionaron credenciales de Wi-Fi"
+    throw "Error: Falta configuración de contraseña Wi-Fi"
+}
+
+#! Convertir SecureString a texto plano (requerido para perfil XML Wi-Fi)
+$BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($WifiSecurePass)
 $Pswdpln = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
 
 # 1. Configurar red Wi-Fi
@@ -246,39 +386,74 @@ try {
         $newConnection = netsh wlan show interfaces | Select-String -Pattern "SSID" | Select-Object -First 1
         if ($newConnection -match $NetworkSSID) {
             Write-Host "Se ha conectado correctamente a $NetworkSSID" -ForegroundColor Green
-            Write-SuccessLog "Conexión Wi-Fi establecida correctamente: $NetworkSSID" 
+            Write-SuccessLog "Conexión Wi-Fi establecida correctamente: $NetworkSSID"
         } else {
-            Write-ErrorLog "Error en conexión Wi-Fi: No se pudo validar la conexión" 
+            Write-ErrorLog "Error en conexión Wi-Fi: No se pudo validar la conexión"
             throw "Ha ocurrido un Error: No se pudo validar la conexion"
         }
     }
+
+    # Validar conectividad real de red (nuevo en v0.0.4)
+    Write-Host ""
+    $networkValid = Test-NetworkConnectivity -MaxRetries 5 -DelaySeconds 5
+
+    if (-not $networkValid) {
+        Write-ErrorLog "No se pudo validar conectividad de red a pesar de estar conectado al SSID"
+        throw "Error: Conectado a Wi-Fi pero sin conectividad de red real"
+    }
+    Write-Host ""
+
 } catch {
     Write-Host "Error en conexion Wi-Fi: $($_.Exception.Message)" -ForegroundColor Red
-    Write-ErrorLog "Error en conexión Wi-Fi: $($_.Exception.Message)" 
+    Write-ErrorLog "Error en conexión Wi-Fi: $($_.Exception.Message)"
     throw $_
 }
 #!
 
-# 2. Configurar inicio de sesión automático (usuario local por defecto 'usuario')  
+# 2. Configurar inicio de sesión automático (usuario local por defecto 'usuario')
 # ----------------------------------------------------------------
-$SecurePassword = ConvertTo-SecureString $Password -AsPlainText -Force # Contraseña del usuario
-$Credential = New-Object System.Management.Automation.PSCredential ($Username, $SecurePassword) # Crear objeto de credenciales
-# Ruta de la clave del registro para el inicio de sesión automático
-$AutoLoginKey = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
 
-#! Convertir SecureString a texto plano (⚠️ Riesgo de seguridad)
-$BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Credential.Password)
-$PlainTextPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
-# Habilitar el inicio de sesión automático
-Set-ItemProperty -Path $AutoLoginKey -Name "AutoAdminLogon" -Value "1"
-Set-ItemProperty -Path $AutoLoginKey -Name "DefaultUserName" -Value $Credential.UserName
-Set-ItemProperty -Path $AutoLoginKey -Name "DefaultPassword" -Value $PlainTextPassword
-Write-Host "Inicio de sesion automatico configurado para el usuario '$Username'."
-Write-SuccessLog "Inicio de sesión automático configurado para el usuario '$Username'."
+# Validar si se proporcionaron credenciales de usuario local
+if (-not $Username -or -not (Get-Variable -Name 'SecurePassword' -ErrorAction SilentlyContinue)) {
+    Write-Host "Autologin local no configurado (credenciales no proporcionadas)" -ForegroundColor Yellow
+    Write-SuccessLog "Autologin local omitido: credenciales no configuradas"
+} else {
+    # Soporte para credenciales cifradas y texto plano
+    if ($SecurePassword -is [System.Security.SecureString]) {
+        # Ya es SecureString (credenciales cifradas)
+        Write-Host "Usando credenciales de usuario local cifradas" -ForegroundColor Green
+        Write-SuccessLog "Autologin local: usando credenciales cifradas"
+        $LocalSecurePass = $SecurePassword
+    } elseif (Get-Variable -Name 'Password' -ErrorAction SilentlyContinue) {
+        # Texto plano proporcionado (método legacy)
+        Write-Host "ADVERTENCIA: Usando contraseña de usuario local en texto plano" -ForegroundColor Yellow
+        Write-SuccessLog "Autologin local: usando texto plano (no recomendado)"
+        $LocalSecurePass = ConvertTo-SecureString $Password -AsPlainText -Force
+    } else {
+        $LocalSecurePass = $SecurePassword
+    }
 
-# Limpiar la variable de texto plano después de su uso
-[System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
-Remove-Variable -Name PlainTextPassword
+    $Credential = New-Object System.Management.Automation.PSCredential ($Username, $LocalSecurePass)
+
+    # Ruta de la clave del registro para el inicio de sesión automático
+    $AutoLoginKey = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
+
+    #! Convertir SecureString a texto plano (⚠️ Requerido por registro de Windows)
+    $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Credential.Password)
+    $PlainTextPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+
+    # Habilitar el inicio de sesión automático
+    Set-ItemProperty -Path $AutoLoginKey -Name "AutoAdminLogon" -Value "1"
+    Set-ItemProperty -Path $AutoLoginKey -Name "DefaultUserName" -Value $Credential.UserName
+    Set-ItemProperty -Path $AutoLoginKey -Name "DefaultPassword" -Value $PlainTextPassword
+    Write-Host "Inicio de sesion automatico configurado para el usuario '$Username'." -ForegroundColor Green
+    Write-SuccessLog "Inicio de sesión automático configurado para el usuario '$Username'."
+
+    # Limpiar la variable de texto plano después de su uso
+    [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
+    Remove-Variable -Name PlainTextPassword -ErrorAction SilentlyContinue
+    Remove-Variable -Name LocalSecurePass -ErrorAction SilentlyContinue
+}
 
 # 3. Cambiar nombre del equipo
 # ----------------------------------------------------------------

@@ -1,258 +1,580 @@
 # AutoConfigPS
 
-Este proyecto automatiza la configuración de equipos corporativos mediante scripts de PowerShell.
+> Sistema automatizado de configuración inicial para equipos Windows en ambientes corporativos
 
-## Índice
+[![Version](https://img.shields.io/badge/version-0.0.4-blue.svg)](CHANGELOG.md)
+[![PowerShell](https://img.shields.io/badge/PowerShell-5.1+-blue.svg)](https://docs.microsoft.com/powershell/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-- [AutoConfigPS](#autoconfigps)
-  - [Índice](#índice)
-  - [**Documentación Técnica**](#documentación-técnica)
-    - [**1. Descripción del Proyecto**](#1-descripción-del-proyecto)
-    - [**2. Estructura del Proyecto**](#2-estructura-del-proyecto)
-    - [**3. Archivos de Configuración**](#3-archivos-de-configuración)
-    - [**4. Funcionamiento de los Scripts**](#4-funcionamiento-de-los-scripts)
-    - [**5. Requisitos del Sistema**](#5-requisitos-del-sistema)
-  - [**Guía de Usuario**](#guía-de-usuario)
-    - [**1. Preparación**](#1-preparación)
-    - [**2. Ejecución de los Scripts**](#2-ejecución-de-los-scripts)
-    - [**3. Verificación**](#3-verificación)
-    - [**4. Solución de Problemas**](#4-solución-de-problemas)
-  - [**Ejemplo de Uso**](#ejemplo-de-uso)
-    - [**1. Configurar `config.ps1`**](#1-configurar-configps1)
-    - [**2. Ejecutar los Scripts**](#2-ejecutar-los-scripts)
+**AutoConfigPS** automatiza completamente la configuración de equipos Windows corporativos, incluyendo cambio de nombre, conexión Wi-Fi, unión al dominio e instalación de aplicaciones.
 
-## **Documentación Técnica**
+---
 
-### **1. Descripción del Proyecto**
+## 📋 Tabla de Contenidos
 
-Este proyecto consiste en un conjunto de scripts de PowerShell para automatizar la configuración inicial de equipos en una red corporativa. Los scripts realizan tareas como:
+- [Características](#-características)
+- [Novedades v0.0.4](#-novedades-v004)
+- [Requisitos](#-requisitos)
+- [Inicio Rápido](#-inicio-rápido)
+- [Configuración](#-configuración)
+- [Estructura del Proyecto](#-estructura-del-proyecto)
+- [Flujo de Ejecución](#-flujo-de-ejecución)
+- [Seguridad](#-seguridad)
+- [Solución de Problemas](#-solución-de-problemas)
+- [Changelog](#-changelog)
+- [Licencia](#-licencia)
 
-- Cambiar el nombre del equipo.
-- Configurar la conexión Wi-Fi.
-- Unir el equipo a un dominio.
-- Configurar el inicio de sesión automático (temporal).
-- Instalar aplicaciones.
+---
 
-### **2. Estructura del Proyecto**
+## ✨ Características
 
-El proyecto está organizado de la siguiente manera:
+### Configuración Automatizada
+- ✅ Cambio de nombre del equipo
+- ✅ Configuración de red Wi-Fi (WPA2-PSK)
+- ✅ Unión automática al dominio Active Directory
+- ✅ Inicio de sesión automático temporal (desactivado al finalizar)
+- ✅ Instalación masiva de aplicaciones (Winget + recursos de red)
+- ✅ Sistema de logging robusto con rotación automática
+- ✅ Tareas programadas para continuidad post-reinicio
 
-```powershell
-/AutoConfigPS
-│
-├── /scripts
-│   ├── script1.ps1       # Parte 1: Configuraciones básicas y preparación del sistema.
-│   ├── script2.ps1       # Parte 2: Unir el equipo al dominio y preparar el sistema.
-│   └── script3.ps1       # Parte 3: Validar cambios, instalar aplicaciones y confirmar configuración.
-│
-├── config.ps1            # Archivo de configuración principal.
-├── apps.json             # Lista de aplicaciones a instalar (opcional).
-├── .gitignore            # Lista de archivos ignorados por Git.
-├── CHANGELOG.md          # Documentacion de logs del proyecto
-└── README.md             # Documentación del proyecto.
+### Seguridad (v0.0.4)
+- 🔒 **Credenciales cifradas con DPAPI de Windows**
+- 🔒 **Permisos restrictivos en archivos de log**
+- 🔒 **Limpieza automática de variables sensibles en memoria**
+- 🔒 **Validación de acceso a controlador de dominio**
+
+### Robustez (v0.0.4)
+- 🛡️ **Pre-validación de requisitos del sistema**
+- 🛡️ **Validación completa de conectividad Wi-Fi**
+- 🛡️ **Instalaciones con timeout configurables**
+- 🛡️ **Detección y manejo de nombres duplicados**
+- 🛡️ **Soporte para Unidades Organizacionales (OU)**
+- 🛡️ **Resumen visual de instalaciones**
+
+---
+
+## 🆕 Novedades v0.0.4
+
+### 🔐 Seguridad Mejorada
+- **Credenciales cifradas**: Script `Setup-Credentials.ps1` para configurar credenciales usando DPAPI
+- **Logs protegidos**: Permisos restrictivos (solo Administradores + SYSTEM)
+- **Validación de DC**: Verifica acceso al controlador de dominio antes de unirse
+
+### 🌐 Conectividad Robusta
+- **Validación Wi-Fi completa**: IP, gateway, DNS
+- **Reintentos inteligentes**: Hasta 5 intentos con delay configurable
+- **3 métodos de detección de DC**: DNS SRV, DNS directo, nltest
+
+### 📦 Instalaciones Mejoradas
+- **Timeouts configurables**: Por defecto 300s (Winget), 600s (Network)
+- **Validación de exit codes**: Detecta instalaciones exitosas y errores
+- **Resumen visual**: Estadísticas y duración de cada instalación
+- **Soporte para ID de Winget**: Evita ambigüedades
+
+### ✅ Pre-validación
+- **Script0.ps1**: Valida 8 requisitos antes de iniciar
+  - Privilegios admin, PowerShell 5.1+, Wi-Fi, Winget
+  - config.ps1, credenciales, espacio disco, conectividad
+- **Instrucciones claras**: Para cada fallo detectado
+- **Exit codes**: Bloquea inicio si faltan requisitos críticos
+
+### 🏢 Active Directory
+- **Soporte para OU**: Especifica OU de destino (`$OUPath`)
+- **Nombres duplicados**: Detección automática y generación de nombre alternativo
+- **Validación LDAP**: Sin requerir módulo ActiveDirectory
+
+---
+
+## 📋 Requisitos
+
+### Sistema Operativo
+- Windows 10 (1809+) o Windows 11
+- PowerShell 5.1 o superior
+
+### Permisos y Acceso
+- **Privilegios de administrador local**
+- **Usuario de dominio con permisos de unión a equipos**
+- **Conectividad Wi-Fi** (o Ethernet)
+- **Acceso a Internet** (para instalaciones de Winget)
+- **Acceso a red corporativa** (para unión al dominio)
+
+### Herramientas Opcionales
+- **Winget** (Windows Package Manager) - para instalaciones desde repositorio
+- **Recursos de red UNC** - para instalaciones personalizadas
+
+---
+
+## 🚀 Inicio Rápido
+
+### 1. Descargar el Proyecto
+
+```bash
+git clone https://github.com/usuario/AutoConfigPS.git
+cd AutoConfigPS
 ```
 
-### **3. Archivos de Configuración**
-
-**`config.ps1`**
-
-Este archivo contiene las variables de configuración necesarias para ejecutar los scripts.  
-**Ejemplo:**
+### 2. Configurar Credenciales (Recomendado - Seguro)
 
 ```powershell
-# Configuración general
-$DomainName = "dominio.local"   # Nombre del dominio
-$Useradmin = "admin"    # Usuario de dominio
-$Passadmin = "P@ssw0rd" # Contraseña de usuario de dominio
-$HostName = "NuevoNombreEquipo" # Nombre del equipo
-$Delay = 5  # Tiempo en segundos para reinicio
-$ScriptPath = "C:\Ruta\De\Los\Scripts"  # Ruta al segundo script (crear en el próximo paso)
+# Ejecutar como administrador
+.\scripts\Setup-Credentials.ps1
+```
 
-# Configurar inicio de sesión local
-$Username = "usuario"   # Usuario local
-$Password = 'P@ssw0rd'  # Contraseña de usuario local
+Sigue el asistente interactivo para configurar:
+- Credenciales de dominio (obligatorio)
+- Credenciales de usuario local (opcional)
+- Contraseña de Wi-Fi (recomendado)
 
-# Configuración de red Wi-Fi
-$NetworkSSID = "Red WiFi"   # Usuario de red Wi-Fi
-$NetworkPass = "ContraseñaWiFi" # Contraseña de usuario local
+### 3. Crear config.ps1
 
-# Lista de aplicaciones a instalar (nombre, origen, ruta de red, parametros)
-    # Winget: Instalación mediante winget
-    # Network: Instalación desde una ruta de red (requiere acceso a la carpeta de red
+```powershell
+# Copiar plantilla
+Copy-Item .\example-config.ps1 .\config.ps1
+
+# Editar con tu editor favorito
+notepad .\config.ps1
+```
+
+### 4. Configurar Parámetros Básicos
+
+Edita `config.ps1` con tu configuración:
+
+```powershell
+# Dominio y equipo
+$DomainName = "empresa.local"
+$HostName = "PC-VENTAS-01"
+$ScriptPath = "C:\AutoConfigPS\scripts"
+
+# SSID de red Wi-Fi
+$NetworkSSID = "RedCorporativa"
+
+# OU de destino (opcional)
+$OUPath = "OU=Workstations,OU=Equipos,DC=empresa,DC=local"
+```
+
+### 5. Ejecutar
+
+```batch
+# Hacer doble clic en init.bat
+# O desde CMD/PowerShell:
+.\init.bat
+```
+
+El script:
+1. ✅ Valida requisitos (Script0.ps1)
+2. ⚙️ Configura Wi-Fi y renombra equipo (Script1.ps1)
+3. 🔄 Reinicia
+4. 🏢 Une al dominio (Script2.ps1)
+5. 🔄 Reinicia
+6. 📦 Instala aplicaciones (Script3.ps1)
+7. ✅ Confirma completado (Script4.ps1)
+
+---
+
+## ⚙️ Configuración
+
+### Configuración de Credenciales
+
+#### Opción A: Credenciales Cifradas (Recomendado)
+
+```powershell
+# 1. Ejecutar asistente
+.\scripts\Setup-Credentials.ps1
+
+# 2. Editar config.ps1 y descomentar líneas de credenciales cifradas
+$DomainCredPath = "$PSScriptRoot\SecureConfig\cred_domain.xml"
+$DomainCredential = Import-Clixml -Path $DomainCredPath
+$Useradmin = $DomainCredential.UserName
+$SecurePassadmin = $DomainCredential.Password
+```
+
+#### Opción B: Texto Plano (No Recomendado)
+
+```powershell
+# config.ps1
+$Useradmin = "admin"
+$Passadmin = "P@ssw0rd"
+```
+
+### Configuración de Aplicaciones
+
+#### Opción 1: En config.ps1
+
+```powershell
 $apps = @(
-    @{ Name = "Google Chrome"; Source = "Winget" },
-    @{ Name = "Notepad++"; Source = "Winget" },
-    @{ Name = "Adobe.Acrobat.Reader.64-bit"; Source = "Winget" },
-    @{ Name = "CustomApp"; Source = "Network"; Path = "\\NetworkPath\Installer.exe"; Arguments = "/silent /norestart" }
+    @{
+        Name = "Google Chrome"
+        Source = "Winget"
+        ID = "Google.Chrome"
+        Timeout = 300
+    },
+    @{
+        Name = "Microsoft Office"
+        Source = "Network"
+        Path = "\\servidor\instaladores\Office2021.exe"
+        Arguments = "/silent /norestart"
+        Timeout = 900
+    }
 )
-
-# Configuración logging
-$errorLog = "C:\Logs\setup_errors.log"  # Ruta para el log de errores
-$successLog = "C:\Logs\setup_success.log"  # Ruta para el log de éxito
 ```
 
-**`apps.json` (Opcional)**
-
-Si prefieres usar un archivo JSON para la lista de aplicaciones, este es un ejemplo:
+#### Opción 2: En apps.json
 
 ```json
 [
   {
-    "_content": "Este es un archivo JSON de ejemplo que contiene una lista de aplicaciones para instalar."
-  },
-  {
     "Name": "Google Chrome",
-    "Source": "Winget"
+    "Source": "Winget",
+    "ID": "Google.Chrome",
+    "Timeout": 300
   },
   {
-    "Name": "Notepad++",
-    "Source": "Winget"
-  },
-  {
-    "Name": "CustomApp",
-    "Source": "Network",
-    "Path": "\\\\NetworkPath\\Installer.exe",
-    "Arguments": "/silent /norestart"
+    "Name": "Adobe Acrobat Reader",
+    "Source": "Winget",
+    "ID": "Adobe.Acrobat.Reader.64-bit",
+    "Timeout": 360
   }
 ]
 ```
 
-### **4. Funcionamiento de los Scripts**
+**Campos disponibles:**
+- `Name` (obligatorio): Nombre de la aplicación
+- `Source` (obligatorio): `"Winget"` o `"Network"`
+- `ID` (opcional): ID específico de Winget
+- `Path` (obligatorio para Network): Ruta UNC al instalador
+- `Arguments` (opcional para Network): Argumentos de instalación (default `/silent`)
+- `Timeout` (opcional): Timeout en segundos (default 300 para Winget, 600 para Network)
 
-**`script1.ps1`**
-
-- **Objetivo:** Configuraciones básicas y preparación del sistema.
-- **Tareas:**
-    1. Cambiar el nombre del equipo.
-    2. Configurar la conexión Wi-Fi.
-    3. Configurar el inicio de sesión automático.
-    4. Crear una tarea programada para ejecutar `script2.ps1` después del reinicio.
-
-**`script2.ps1`**
-
-- **Objetivo:** Unir el equipo al dominio y preparar el sistema.
-- **Tareas:**
-    1. Unir el equipo al dominio.
-    2. Crear una tarea programada para ejecutar `script3.ps1` después del reinicio.
-    3. Eliminar la tarea programada anterior (`Exec-Join-Domain`).
-
-**`script3.ps1`**
-
-- **Objetivo:** Validar cambios, instalar aplicaciones y confirmar la configuración.
-- **Tareas:**
-    1. Validar que el equipo esté unido al dominio.
-    2. Instalar aplicaciones desde Winget o una unidad de red.
-    3. Confirmar la configuración automática.
-
-### **5. Requisitos del Sistema**
-
-- **PowerShell 5.1 o superior.**
-- **Permisos de administrador** para ejecutar los scripts.
-- **Conexión a Internet** (para instalar aplicaciones desde Winget).
-- **Acceso a la red** (para instalar aplicaciones desde una unidad de red).
-
-## **Guía de Usuario**
-
-### **1. Preparación**
-
-1. **Descargar el proyecto:** Clona o descarga el repositorio del proyecto.
-2. **Editar la configuración:** Modifica el archivo `config.ps1` con los valores adecuados para tu entorno.
-
-### **2. Ejecución de los Scripts**
-
-1. **Ejecutar `script1.ps1`:**
-    - Abre PowerShell como administrador.
-    - Navega a la carpeta donde se encuentra el script.
-    - Ejecuta el siguiente comando:
-
-        ```powershell
-        .\script1.ps1
-        ```
-
-    - El equipo se reiniciará automáticamente después de completar las tareas.
-2. **Ejecutar `script2.ps1`:**
-    - Después del reinicio, el script se ejecutará automáticamente.
-    - Si no se ejecuta, abre PowerShell como administrador y ejecuta:
-
-        ```powershell
-        .\script2.ps1
-        ```
-
-    - El equipo se reiniciará nuevamente.
-3. **Ejecutar `script3.ps1`:**
-    - Después del segundo reinicio, el script se ejecutará automáticamente.
-    - Si no se ejecuta, abre PowerShell como administrador y ejecuta:
-
-        ```powershell
-        .\script3.ps1
-        ```
-
-### **3. Verificación**
-
-- **Archivo de confirmación:** Después de ejecutar `script3.ps1`, se creará un archivo en `C:\ConfiguracionCompleta.txt` para confirmar que la configuración se completó correctamente.
-- **Logs:** Revisa los logs generados por los scripts para verificar que todas las tareas se completaron sin errores.
-
-### **4. Solución de Problemas**
-
-- **Errores comunes:**
-  - **Falta de permisos:** Asegúrate de ejecutar los scripts como administrador.
-  - **Archivo de configuración incorrecto:** Verifica que `config.ps1` esté correctamente configurado.
-  - **Problemas de red:** Asegúrate de que el equipo tenga acceso a Internet y a la red corporativa.
-
----
-
-## **Ejemplo de Uso**
-
-### **1. Configurar `config.ps1`**
+### Configuración de OU (Opcional)
 
 ```powershell
-# Configuración general
-$DomainName = "dominio.local"   # Nombre del dominio
-$Useradmin = "admin"    # Usuario de dominio
-$Passadmin = "P@ssw0rd" # Contraseña de usuario de dominio
-$HostName = "NuevoNombreEquipo" # Nombre del equipo
-$Delay = 5  # Tiempo en segundos para reinicio
-$ScriptPath = "C:\Ruta\De\Los\Scripts"  # Ruta al segundo script (crear en el próximo paso)
-
-# Configurar inicio de sesión local
-$Username = "usuario"   # Usuario local
-$Password = 'P@ssw0rd'  # Contraseña de usuario local
-
-# Configuración de red Wi-Fi
-$NetworkSSID = "Red WiFi"   # Usuario de red Wi-Fi
-$NetworkPass = "ContraseñaWiFi" # Contraseña de usuario local
-
-# Lista de aplicaciones a instalar (nombre, origen, ruta de red, parametros)
-$apps = @(
-    @{ Name = "Google Chrome"; Source = "Winget" },
-    @{ Name = "Notepad++"; Source = "Winget" },
-    @{ Name = "Adobe.Acrobat.Reader.64-bit"; Source = "Winget" },
-    @{ Name = "CustomApp"; Source = "Network"; Path = "\\NetworkPath\Installer.exe"; Arguments = "/silent /norestart" }
-)
-
-# Configuración logging
-$errorLog = "C:\Logs\setup_errors.log"  # Ruta para el log de errores
-$successLog = "C:\Logs\setup_success.log"  # Ruta para el log de éxito
+# config.ps1
+$OUPath = "OU=Workstations,OU=IT,DC=empresa,DC=local"
 ```
 
-### **2. Ejecutar los Scripts**
-
-1. **Primer script:**
-
-    ```powershell
-    .\script1.ps1
-    ```
-
-2. **Segundo script:**
-
-    ```powershell
-    .\script2.ps1
-    ```
-
-3. **Tercer script:**
-
-    ```powershell
-    .\script3.ps1
-    ```
+Si no se define, el equipo se une al contenedor "Computers" predeterminado.
 
 ---
+
+## 📁 Estructura del Proyecto
+
+```
+AutoConfigPS/
+├── scripts/
+│   ├── Setup-Credentials.ps1  # Asistente de credenciales cifradas
+│   ├── Script0.ps1             # Pre-validación de requisitos
+│   ├── Script1.ps1             # Configuración básica (Wi-Fi, nombre)
+│   ├── Script2.ps1             # Unión al dominio
+│   ├── Script3.ps1             # Instalación de aplicaciones
+│   └── Script4.ps1             # Confirmación y notificación
+│
+├── config.ps1                  # Configuración principal (crear desde example)
+├── apps.json                   # Lista de aplicaciones (opcional)
+│
+├── example-config.ps1          # Plantilla de configuración
+├── example-apps.json           # Plantilla de aplicaciones
+│
+├── init.bat                    # Script de inicio
+├── README.md                   # Esta documentación
+├── CHANGELOG.md                # Historial de cambios
+├── LOG_IMPLEMENTACION.md       # Documentación técnica de implementación
+└── LICENSE                     # Licencia MIT
+```
+
+---
+
+## 🔄 Flujo de Ejecución
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      INICIO (init.bat)                       │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Script0.ps1 (v0.0.4)                       │
+│               PRE-VALIDACIÓN DE REQUISITOS                   │
+│  ✓ Privilegios admin                                         │
+│  ✓ PowerShell 5.1+                                           │
+│  ✓ Adaptador Wi-Fi                                           │
+│  ✓ config.ps1 existe                                         │
+│  ℹ Winget, credenciales, espacio, conectividad               │
+└────────────────────────┬────────────────────────────────────┘
+                         │ Si pasa
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      Script1.ps1 (1/4)                       │
+│             CONFIGURACIÓN BÁSICA DEL SISTEMA                 │
+│  1. Configurar red Wi-Fi (con validación completa)          │
+│  2. Configurar autologin (usuario local)                    │
+│  3. Cambiar nombre del equipo                               │
+│  4. Crear tarea programada (Exec-Join-Domain)               │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼ REINICIO #1
+                         │
+┌─────────────────────────────────────────────────────────────┐
+│                      Script2.ps1 (2/4)                       │
+│                   UNIÓN AL DOMINIO                           │
+│  1. Actualizar autologin (usuario de dominio)               │
+│  2. Validar acceso a DC (v0.0.4)                             │
+│  3. Verificar nombre duplicado (v0.0.4)                      │
+│  4. Unir equipo al dominio (con OU opcional)                 │
+│  5. Crear tarea programada (Exec-Check-Continue)            │
+│  6. Eliminar tarea anterior                                  │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼ REINICIO #2
+                         │
+┌─────────────────────────────────────────────────────────────┐
+│                      Script3.ps1 (3/4)                       │
+│           INSTALACIÓN DE APLICACIONES                        │
+│  1. Validar cambios aplicados                               │
+│  2. Eliminar tarea anterior                                  │
+│  3. Desactivar autologin                                     │
+│  4. Instalar aplicaciones:                                   │
+│     ├─ Winget (con timeout v0.0.4)                           │
+│     └─ Network (con timeout v0.0.4)                          │
+│  5. Mostrar resumen de instalaciones (v0.0.4)                │
+│  6. Crear archivo de confirmación                            │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      Script4.ps1 (4/4)                       │
+│            CONFIRMACIÓN Y NOTIFICACIÓN                       │
+│  • Mensaje en consola con resumen                            │
+│  • Notificación Toast al usuario                             │
+│  • Referencias a logs                                        │
+└─────────────────────────────────────────────────────────────┘
+                         │
+                         ▼
+                   CONFIGURACIÓN
+                    COMPLETADA ✅
+```
+
+**Tiempo estimado:** 20-40 minutos (dependiendo del número de aplicaciones)
+
+---
+
+## 🔒 Seguridad
+
+### Credenciales Cifradas (v0.0.4)
+
+Las credenciales se cifran usando **DPAPI (Data Protection API)** de Windows:
+
+- ✅ Cifrado automático por usuario y máquina
+- ✅ No requiere gestión manual de claves
+- ✅ Solo legibles por el usuario que las creó en el equipo específico
+- ✅ Almacenamiento en `SecureConfig/` con permisos restrictivos
+
+**Configurar:**
+```powershell
+.\scripts\Setup-Credentials.ps1
+```
+
+### Permisos de Archivos de Log
+
+Los archivos de log tienen permisos restrictivos:
+- Solo **Administrators** y **SYSTEM** pueden leer/escribir
+- Previene exposición de información sensible
+- Logs no modificables por usuarios estándar
+
+### Limpieza de Memoria
+
+Las variables con contraseñas se limpian explícitamente:
+```powershell
+[System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
+Remove-Variable -Name PlainTextPassword
+```
+
+### Recomendaciones
+
+1. ✅ **Usar credenciales cifradas** (ejecutar Setup-Credentials.ps1)
+2. ✅ **Mantener config.ps1 en .gitignore** (no versionar credenciales)
+3. ✅ **Usar OU con GPOs restrictivas** para equipos nuevos
+4. ✅ **Revisar logs** después de cada ejecución
+5. ✅ **Ejecutar desde recurso de red** con permisos limitados
+
+---
+
+## 🔧 Solución de Problemas
+
+### Script0.ps1 Falla (Pre-validación)
+
+**Problema:** Validación crítica falla
+
+**Soluciones:**
+- **Sin privilegios admin**: Ejecutar `init.bat` como administrador
+- **PowerShell < 5.1**: Actualizar desde https://aka.ms/powershell-release
+- **Sin Wi-Fi**: Si usas Ethernet, modificar Script1.ps1 para omitir configuración Wi-Fi
+- **config.ps1 no existe**: Copiar `example-config.ps1` a `config.ps1`
+- **Sin Winget**: Instalar desde Microsoft Store (App Installer)
+
+### Script1.ps1 - Falla Conexión Wi-Fi
+
+**Problema:** No se puede conectar a Wi-Fi
+
+**Soluciones:**
+1. Verificar SSID y contraseña en config.ps1
+2. Verificar que el perfil Wi-Fi no exista previamente:
+   ```powershell
+   netsh wlan show profiles
+   netsh wlan delete profile name="RedCorporativa"
+   ```
+3. Verificar que el adaptador Wi-Fi esté habilitado:
+   ```powershell
+   Get-NetAdapter | Where-Object {$_.InterfaceDescription -match "Wi-Fi"}
+   ```
+4. Revisar logs en `C:\Logs\setup_errors.log`
+
+### Script2.ps1 - Falla Unión al Dominio
+
+**Problema:** No se puede unir al dominio
+
+**Soluciones:**
+1. **Error "DC no encontrado"**:
+   - Verificar conectividad: `Test-Connection -ComputerName dominio.local`
+   - Verificar DNS: `nslookup dominio.local`
+   - Verificar DC: `nltest /dsgetdc:dominio.local`
+
+2. **Error "Acceso denegado"**:
+   - Verificar credenciales de dominio en config.ps1
+   - Verificar permisos del usuario para unir equipos al dominio
+
+3. **Error "Nombre duplicado"** (v0.0.4):
+   - Script detecta automáticamente y genera nombre alternativo
+   - Si falla generación, cambiar manualmente `$HostName` en config.ps1
+
+4. **Error de OU** (v0.0.4):
+   - Verificar que la OU exista: Abrir "Active Directory Users and Computers"
+   - Verificar formato del DN: `OU=Workstations,DC=empresa,DC=local`
+   - Verificar permisos del usuario en la OU
+
+### Script3.ps1 - Fallan Instalaciones
+
+**Problema:** Instalaciones de aplicaciones fallan o timeout
+
+**Soluciones:**
+1. **Timeout de Winget**:
+   - Aumentar timeout en config.ps1 o apps.json: `"Timeout": 600`
+   - Verificar conectividad a Internet
+   - Verificar fuentes de Winget: `winget source list`
+
+2. **App no encontrada en Winget**:
+   - Buscar ID exacto: `winget search "nombre app"`
+   - Usar campo `ID` en configuración: `"ID": "Google.Chrome"`
+
+3. **Instalación desde red falla**:
+   - Verificar acceso a ruta UNC: `Test-Path \\servidor\instaladores\app.exe`
+   - Verificar permisos del usuario de dominio
+   - Verificar que el instalador sea silencioso
+
+4. **Revisar resumen** (v0.0.4):
+   - Script3 muestra resumen con apps exitosas/fallidas
+   - Revisar logs: `C:\Logs\setup_errors.log`
+
+### Logs y Diagnóstico
+
+**Ubicación de logs:**
+- `C:\Logs\setup_success.log` - Operaciones exitosas
+- `C:\Logs\setup_errors.log` - Errores y advertencias
+
+**Rotación automática:** Archivos mayores a 10MB se renombran automáticamente
+
+**Revisar logs:**
+```powershell
+# Ver últimas 50 líneas de errores
+Get-Content C:\Logs\setup_errors.log -Tail 50
+
+# Buscar errores específicos
+Select-String -Path C:\Logs\setup_errors.log -Pattern "Error"
+
+# Ver todo el log de éxito
+notepad C:\Logs\setup_success.log
+```
+
+### Problemas Comunes
+
+| Problema | Causa | Solución |
+|----------|-------|----------|
+| Script no inicia | Sin privilegios admin | Ejecutar como admin |
+| Wi-Fi no conecta | SSID/contraseña incorrecta | Verificar config.ps1 |
+| Unión al dominio falla | Sin conectividad a DC | Verificar red y DNS |
+| Winget no funciona | No instalado | Instalar desde Microsoft Store |
+| Instalación cuelga (v0.0.3) | Sin timeout | Actualizar a v0.0.4 |
+| Nombre duplicado causa error | Equipo ya existe en AD | v0.0.4 resuelve automáticamente |
+
+---
+
+## 📊 Changelog
+
+Ver [CHANGELOG.md](CHANGELOG.md) para el historial completo de cambios.
+
+### Versiones
+
+- **v0.0.4** (2026-01-28) - Seguridad y robustez
+  - 🔒 Credenciales cifradas con DPAPI
+  - 🛡️ Pre-validación de requisitos
+  - ⏱️ Instalaciones con timeout
+  - 🏢 Soporte para OU y nombres duplicados
+  - 🌐 Validación completa de conectividad
+
+- **v0.0.3** (2025-03-06) - Correcciones y mejoras
+  - Corregidos errores de tipeo
+  - Mejorados mensajes de conexión Wi-Fi
+  - Compatibilidad con PowerShell 5.1
+
+- **v0.0.2** (2025-03-01) - Reintentos y refactorización
+  - Implementados reintentos de conexión Wi-Fi
+  - Actualización de fuentes de Winget
+
+- **v0.0.1** (2025-02-28) - Versión inicial
+  - Scripts básicos de configuración
+  - Soporte para Winget y recursos de red
+
+---
+
+## 📄 Licencia
+
+Este proyecto está licenciado bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
+
+---
+
+## 👤 Autor
+
+**Json Rivera (JasRockr!)**
+
+---
+
+## 🤝 Contribuciones
+
+Las contribuciones son bienvenidas. Por favor:
+
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
+
+---
+
+## 📞 Soporte
+
+- 📝 **Issues**: [GitHub Issues](https://github.com/usuario/AutoConfigPS/issues)
+- 📚 **Documentación técnica**: Ver [LOG_IMPLEMENTACION.md](LOG_IMPLEMENTACION.md)
+- 📖 **Guía de pruebas**: Ver [GUIA_PRUEBAS.md](GUIA_PRUEBAS.md) (próximamente)
+
+---
+
+## ⚠️ Advertencias
+
+- ⚠️ Este script realiza cambios significativos en el sistema (renombre, unión a dominio, instalaciones)
+- ⚠️ **Probar primero en ambiente de pruebas** antes de usar en producción
+- ⚠️ Mantener `config.ps1` seguro y no versionarlo con credenciales
+- ⚠️ Revisar logs después de cada ejecución
+- ⚠️ Las credenciales cifradas solo funcionan en el equipo donde se crearon
+
+---
+
+**🎉 ¡Disfruta de la automatización con AutoConfigPS v0.0.4!**

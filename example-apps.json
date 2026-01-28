@@ -1,19 +1,37 @@
 [
   {
-    "_content": "Este es un archivo JSON de ejemplo que contiene una lista de aplicaciones para instalar."
+    "_comment": "Este es un archivo JSON de ejemplo que contiene una lista de aplicaciones para instalar.",
+    "_version": "v0.0.4",
+    "_documentation": "Campos disponibles: Name (requerido), Source (requerido: Winget|Network), ID (opcional para Winget), Path (requerido para Network), Arguments (opcional para Network), Timeout (opcional en segundos)"
   },
   {
     "Name": "Google Chrome",
-    "Source": "Winget"
+    "Source": "Winget",
+    "ID": "Google.Chrome",
+    "Timeout": 300
+  },
+  {
+    "Name": "Microsoft Visual Studio Code",
+    "Source": "Winget",
+    "ID": "Microsoft.VisualStudioCode",
+    "Timeout": 240
   },
   {
     "Name": "Notepad++",
-    "Source": "Winget"
+    "Source": "Winget",
+    "Timeout": 180
+  },
+  {
+    "Name": "Adobe Acrobat Reader",
+    "Source": "Winget",
+    "ID": "Adobe.Acrobat.Reader.64-bit",
+    "Timeout": 360
   },
   {
     "Name": "CustomApp",
     "Source": "Network",
     "Path": "\\\\NetworkPath\\Installer.exe",
-    "Arguments": "/silent /norestart"
+    "Arguments": "/silent /norestart",
+    "Timeout": 600
   }
 ]
