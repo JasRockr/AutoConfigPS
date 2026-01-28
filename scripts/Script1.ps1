@@ -313,11 +313,15 @@ if (Get-Variable -Name 'SecureNetworkPass' -ErrorAction SilentlyContinue) {
 $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($WifiSecurePass)
 $Pswdpln = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
 
+#! Escapar caracteres especiales XML en la contraseña
+# Esto es critico para contraseñas con caracteres especiales como: < > & " ' /
+$PswdplnEscaped = [System.Security.SecurityElement]::Escape($Pswdpln)
+
 # 1. Configurar red Wi-Fi
 try {
     # Validar variables de configuración
-    if (-not $NetworkSSID -or -not $NetworkPass -or -not $Delay) {
-        Write-ErrorLog "Faltan variables de configuración para la red Wi-Fi" 
+    if (-not $NetworkSSID -or -not $Pswdpln -or -not $Delay) {
+        Write-ErrorLog "Faltan variables de configuración para la red Wi-Fi"
         throw "Faltan variables de configuración para la red Wi-Fi"
     }
 
@@ -348,7 +352,7 @@ try {
     <sharedKey>
     <keyType>passPhrase</keyType>
     <protected>false</protected>
-    <keyMaterial>$Pswdpln</keyMaterial>
+    <keyMaterial>$PswdplnEscaped</keyMaterial>
     </sharedKey>
 </security>
 </MSM>
@@ -361,9 +365,9 @@ try {
         Write-SuccessLog "Perfil de red Wi-Fi creado correctamente: $NetworkSSID" 
     }
 
-    # Limpiar la variable de texto plano después de su uso
+    # Limpiar las variables de texto plano después de su uso
     [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
-    Remove-Variable -Name Pswdpln
+    Remove-Variable -Name Pswdpln, PswdplnEscaped -ErrorAction SilentlyContinue
 
     # Conectar a la red Wi-Fi
     Write-Host "Conectando a la red: $NetworkSSID" -ForegroundColor Blue

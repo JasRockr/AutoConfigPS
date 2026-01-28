@@ -7,6 +7,33 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [v0.0.4-hotfix2] - 2026-01-28
+
+### 🔧 HOTFIX - Conexion Wi-Fi con Caracteres Especiales
+
+#### Fixed
+- **CRITICO:** Fallo en conexion Wi-Fi cuando la contraseña contiene caracteres especiales (/, <, >, &, ", ')
+- **IMPORTANTE:** Agregado escape XML automatico para contraseñas Wi-Fi usando `[System.Security.SecurityElement]::Escape()`
+- **IMPORTANTE:** Corregida validacion de variables de configuracion para soportar credenciales cifradas
+
+#### Changed
+- Script1.ps1 linea 316-318: Agregada funcion de escape XML para contraseñas
+- Script1.ps1 linea 355: Modificado perfil XML para usar contraseña escapada
+- Script1.ps1 linea 323: Corregida validacion para verificar `$Pswdpln` en lugar de `$NetworkPass`
+- Script1.ps1 linea 373: Agregada limpieza de variable `$PswdplnEscaped` de memoria
+
+#### Added
+- **UTIL:** Script de prueba `test-password-escape.ps1` para verificar escape de contraseñas
+
+#### Impact
+- **Antes:** Conexion Wi-Fi fallaba silenciosamente con contraseñas conteniendo "/" u otros caracteres especiales XML
+- **Despues:** Todas las contraseñas son escapadas correctamente antes de insertarse en el perfil XML Wi-Fi
+- **Escenario reportado:** Contraseña terminando en "/" ahora funciona correctamente
+
+**Problema reportado por:** Usuario en pruebas de hardware real
+
+---
+
 ## [v0.0.4-hotfix1] - 2026-01-28
 
 ### 📝 Documentacion

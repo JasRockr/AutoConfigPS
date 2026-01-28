@@ -2,32 +2,32 @@
 
 <#
 .SYNOPSIS
-    Script de configuración inicial de credenciales para AutoConfigPS
+    Script de configuracion inicial de credenciales para AutoConfigPS
 
 .DESCRIPTION
     Este script ayuda a generar credenciales cifradas usando DPAPI de Windows.
-    Las credenciales se almacenan cifradas y solo pueden ser leídas por el usuario
-    y máquina que las creó.
+    Las credenciales se almacenan cifradas y solo pueden ser leidas por el usuario
+    y maquina que las creo.
 
 .NOTES
     Autor: Json Rivera (JasRockr!)
-    Versión: 1.0.0
+    Version: 1.0.0
     Fecha: 2026-01-28
 
     IMPORTANTE:
     - Debe ejecutarse con privilegios de administrador
-    - Las credenciales solo serán válidas en este equipo con este usuario
-    - Para uso en múltiples equipos, ejecutar este script en cada uno
+    - Las credenciales solo seran validas en este equipo con este usuario
+    - Para uso en multiples equipos, ejecutar este script en cada uno
 
 .EXAMPLE
     .\Setup-Credentials.ps1
-    Ejecuta el asistente interactivo de configuración
+    Ejecuta el asistente interactivo de configuracion
 #>
 
 param()
 
 # ====================================
-# CONFIGURACIÓN
+# CONFIGURACIoN
 # ====================================
 
 $ScriptVersion = "1.0.0"
@@ -79,11 +79,11 @@ function Test-CredentialValid {
 
 Clear-Host
 Write-Host ""
-Write-ColoredMessage "AutoConfigPS - Configuración de Credenciales Seguras" -Type Header
-Write-Host "Versión: $ScriptVersion" -ForegroundColor Gray
+Write-ColoredMessage "AutoConfigPS - Configuracion de Credenciales Seguras" -Type Header
+Write-Host "Version: $ScriptVersion" -ForegroundColor Gray
 Write-Host ""
-Write-ColoredMessage "Este asistente te guiará en la configuración de credenciales cifradas" -Type Info
-Write-ColoredMessage "Las credenciales se cifrarán usando DPAPI de Windows" -Type Info
+Write-ColoredMessage "Este asistente te guiara en la configuracion de credenciales cifradas" -Type Info
+Write-ColoredMessage "Las credenciales se cifraran usando DPAPI de Windows" -Type Info
 Write-Host ""
 
 # ====================================
@@ -105,7 +105,7 @@ if (-not $isAdmin) {
 # CREAR DIRECTORIO SEGURO
 # ====================================
 
-Write-ColoredMessage "Preparando directorio de configuración segura..." -Type Info
+Write-ColoredMessage "Preparando directorio de configuracion segura..." -Type Info
 
 if (-not (Test-Path $SecureConfigPath)) {
     try {
@@ -149,13 +149,13 @@ while (-not $domainCredValid) {
             # Guardar credenciales cifradas
             $domainCred | Export-Clixml -Path $domainCredPath -Force
 
-            # Verificar que se guardó correctamente
+            # Verificar que se guardo correctamente
             if (Test-Path $domainCredPath) {
                 # Intentar leer para validar
                 $testCred = Import-Clixml -Path $domainCredPath
                 if (Test-CredentialValid -Credential $testCred) {
                     Write-ColoredMessage "Credenciales de dominio guardadas correctamente" -Type Success
-                    Write-Host "Ubicación: $domainCredPath" -ForegroundColor Gray
+                    Write-Host "Ubicacion: $domainCredPath" -ForegroundColor Gray
                     $domainCredValid = $true
                 } else {
                     throw "Error al validar credenciales guardadas"
@@ -164,10 +164,10 @@ while (-not $domainCredValid) {
                 throw "Error al guardar archivo de credenciales"
             }
         } else {
-            Write-ColoredMessage "Credenciales inválidas o canceladas" -Type Warning
+            Write-ColoredMessage "Credenciales invalidas o canceladas" -Type Warning
             $retry = Read-Host "¿Intentar nuevamente? (S/N)"
             if ($retry -notmatch "^[Ss]") {
-                Write-ColoredMessage "Configuración cancelada por el usuario" -Type Warning
+                Write-ColoredMessage "Configuracion cancelada por el usuario" -Type Warning
                 exit 0
             }
         }
@@ -175,7 +175,7 @@ while (-not $domainCredValid) {
         Write-ColoredMessage "Error al procesar credenciales: $_" -Type Error
         $retry = Read-Host "¿Intentar nuevamente? (S/N)"
         if ($retry -notmatch "^[Ss]") {
-            Write-ColoredMessage "Configuración cancelada por el usuario" -Type Warning
+            Write-ColoredMessage "Configuracion cancelada por el usuario" -Type Warning
             exit 0
         }
     }
@@ -203,7 +203,7 @@ try {
 
         if (Test-Path $localCredPath) {
             Write-ColoredMessage "Credenciales de usuario local guardadas correctamente" -Type Success
-            Write-Host "Ubicación: $localCredPath" -ForegroundColor Gray
+            Write-Host "Ubicacion: $localCredPath" -ForegroundColor Gray
         }
     } else {
         Write-ColoredMessage "Credenciales de usuario local omitidas" -Type Info
@@ -215,13 +215,13 @@ try {
 Write-Host ""
 
 # ====================================
-# CONTRASEÑA DE WI-FI
+# CONTRASENA DE WI-FI
 # ====================================
 
-Write-ColoredMessage "PASO 3: Contraseña de Red Wi-Fi" -Type Header
+Write-ColoredMessage "PASO 3: Contrasena de Red Wi-Fi" -Type Header
 Write-Host ""
-Write-Host "Ingresa la contraseña de la red Wi-Fi corporativa." -ForegroundColor Gray
-Write-Host "El SSID se configurará en config.ps1" -ForegroundColor Gray
+Write-Host "Ingresa la contrasena de la red Wi-Fi corporativa." -ForegroundColor Gray
+Write-Host "El SSID se configurara en config.ps1" -ForegroundColor Gray
 Write-Host ""
 
 $wifiCredPath = "$SecureConfigPath\cred_wifi.xml"
@@ -229,28 +229,28 @@ $wifiCredValid = $false
 
 while (-not $wifiCredValid) {
     try {
-        $wifiCred = Get-Credential -UserName "WiFi-Password" -Message "Contraseña de Red Wi-Fi (usar campo de contraseña)"
+        $wifiCred = Get-Credential -UserName "WiFi-Password" -Message "Contrasena de Red Wi-Fi (usar campo de contrasena)"
 
         if ($wifiCred -and $wifiCred.Password.Length -gt 0) {
-            # Guardar solo la contraseña cifrada
+            # Guardar solo la contrasena cifrada
             $wifiCred | Export-Clixml -Path $wifiCredPath -Force
 
             if (Test-Path $wifiCredPath) {
-                Write-ColoredMessage "Contraseña de Wi-Fi guardada correctamente" -Type Success
-                Write-Host "Ubicación: $wifiCredPath" -ForegroundColor Gray
+                Write-ColoredMessage "Contrasena de Wi-Fi guardada correctamente" -Type Success
+                Write-Host "Ubicacion: $wifiCredPath" -ForegroundColor Gray
                 $wifiCredValid = $true
             }
         } else {
-            Write-ColoredMessage "Contraseña inválida o cancelada" -Type Warning
+            Write-ColoredMessage "Contrasena invalida o cancelada" -Type Warning
             $retry = Read-Host "¿Intentar nuevamente? (S/N)"
             if ($retry -notmatch "^[Ss]") {
-                Write-ColoredMessage "Configuración de Wi-Fi cancelada" -Type Warning
-                Write-ColoredMessage "Deberás configurar la contraseña manualmente en config.ps1" -Type Info
+                Write-ColoredMessage "Configuracion de Wi-Fi cancelada" -Type Warning
+                Write-ColoredMessage "Deberas configurar la contrasena manualmente en config.ps1" -Type Info
                 break
             }
         }
     } catch {
-        Write-ColoredMessage "Error al procesar contraseña de Wi-Fi: $_" -Type Error
+        Write-ColoredMessage "Error al procesar contrasena de Wi-Fi: $_" -Type Error
         $retry = Read-Host "¿Intentar nuevamente? (S/N)"
         if ($retry -notmatch "^[Ss]") {
             break
@@ -264,7 +264,7 @@ Write-Host ""
 # RESUMEN
 # ====================================
 
-Write-ColoredMessage "CONFIGURACIÓN COMPLETADA" -Type Header
+Write-ColoredMessage "CONFIGURACIoN COMPLETADA" -Type Header
 Write-Host ""
 Write-ColoredMessage "Resumen de credenciales configuradas:" -Type Info
 Write-Host ""
@@ -287,13 +287,13 @@ if ($summary.Count -eq 0) {
 }
 
 Write-Host ""
-Write-ColoredMessage "PRÓXIMOS PASOS:" -Type Info
-Write-Host "  1. Edita el archivo 'config.ps1' para configurar otros parámetros" -ForegroundColor Gray
-Write-Host "  2. Asegúrate de que config.ps1 esté configurado para usar credenciales cifradas" -ForegroundColor Gray
-Write-Host "  3. Ejecuta 'init.bat' para iniciar el proceso de configuración" -ForegroundColor Gray
+Write-ColoredMessage "PROXIMOS PASOS:" -Type Info
+Write-Host "  1. Edita el archivo 'config.ps1' para configurar otros parametros" -ForegroundColor Gray
+Write-Host "  2. Asegurate de que config.ps1 este configurado para usar credenciales cifradas" -ForegroundColor Gray
+Write-Host "  3. Ejecuta 'init.bat' para iniciar el proceso de configuracion" -ForegroundColor Gray
 Write-Host ""
 
-Write-ColoredMessage "IMPORTANTE: Las credenciales solo funcionarán en este equipo con este usuario" -Type Warning
+Write-ColoredMessage "IMPORTANTE: Las credenciales solo funcionaran en este equipo con este usuario" -Type Warning
 Write-Host ""
 
 Read-Host "Presiona Enter para salir"
