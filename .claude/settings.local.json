@@ -6,7 +6,9 @@
       "Bash(powershell -Command \"$line = Get-Content ''C:\\Users\\yquintero\\Desktop\\json\\AutoConfigPS\\scripts\\Script0.ps1'' | Select-Object -Index 219; $line; $line.Length\")",
       "Bash(powershell:*)",
       "Bash(powershell.exe -ExecutionPolicy Bypass -File test-syntax.ps1 -ScriptPath \".\\scripts\\Script0.ps1\")",
-      "Bash(powershell.exe -ExecutionPolicy Bypass -File check-braces.ps1)"
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File check-braces.ps1)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File check-quotes.ps1)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File find-smart-quote.ps1)"
     ]
   }
 }

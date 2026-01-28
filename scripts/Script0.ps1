@@ -6,11 +6,11 @@
 
 .DESCRIPTION
     Valida que el sistema cumpla con todos los requisitos necesarios antes
-    de iniciar el proceso de configuración automatizada.
+    de iniciar el proceso de configuracion automatizada.
 
     Validaciones:
     - Privilegios de administrador
-    - Versión de PowerShell
+    - Version de PowerShell
     - Adaptador Wi-Fi disponible
     - Winget instalado y funcional
     - Archivo config.ps1 existe
@@ -19,7 +19,7 @@
 
 .NOTES
     Autor: Json Rivera (JasRockr!)
-    Versión: 1.0.0
+    Version: 1.0.0
     Fecha: 2026-01-28
     Parte de: AutoConfigPS v0.0.4
 
@@ -31,7 +31,7 @@
 param()
 
 # ====================================
-# CONFIGURACIÓN
+# CONFIGURACION
 # ====================================
 
 $ScriptVersion = "1.0.0"
@@ -90,7 +90,7 @@ Write-Host ""
 $checks = @()
 
 # ====================================
-# VALIDACIÓN 1: PRIVILEGIOS DE ADMINISTRADOR
+# VALIDACION 1: PRIVILEGIOS DE ADMINISTRADOR
 # ====================================
 
 Write-SectionHeader "1. PRIVILEGIOS DE ADMINISTRADOR"
@@ -102,7 +102,7 @@ $checks += [PSCustomObject]@{
     Check = "Privilegios de Administrador"
     Passed = $isAdmin
     Critical = $true
-    Details = if ($isAdmin) { "Ejecutándose como administrador" } else { "Se requieren privilegios de administrador" }
+    Details = if ($isAdmin) { "Ejecutandose como administrador" } else { "Se requieren privilegios de administrador" }
 }
 
 Write-CheckResult -CheckName "Privilegios de Administrador" -Passed $isAdmin -Details $checks[-1].Details
@@ -116,33 +116,33 @@ if (-not $isAdmin) {
 }
 
 # ====================================
-# VALIDACIÓN 2: VERSIÓN DE POWERSHELL
+# VALIDACION 2: VERSION DE POWERSHELL
 # ====================================
 
-Write-SectionHeader "2. VERSIÓN DE POWERSHELL"
+Write-SectionHeader "2. VERSION DE POWERSHELL"
 
 $psVersion = $PSVersionTable.PSVersion
 $psVersionOk = $psVersion -ge $MinPowerShellVersion
 
 $checks += [PSCustomObject]@{
     Category = "PowerShell"
-    Check = "Versión de PowerShell"
+    Check = "Version de PowerShell"
     Passed = $psVersionOk
     Critical = $true
-    Details = "Versión actual: $psVersion (Mínima: $MinPowerShellVersion)"
+    Details = "Version actual: $psVersion (Minima: $MinPowerShellVersion)"
 }
 
-Write-CheckResult -CheckName "Versión de PowerShell" -Passed $psVersionOk -Details $checks[-1].Details
+Write-CheckResult -CheckName "Version de PowerShell" -Passed $psVersionOk -Details $checks[-1].Details
 
 if (-not $psVersionOk) {
     Write-Host ""
-    Write-Host "SOLUCIÓN:" -ForegroundColor Yellow
-    Write-Host "  Actualiza PowerShell a la versión $MinPowerShellVersion o superior" -ForegroundColor Yellow
+    Write-Host "SOLUCION:" -ForegroundColor Yellow
+    Write-Host "  Actualiza PowerShell a la version $MinPowerShellVersion o superior" -ForegroundColor Yellow
     Write-Host "  Descarga: https://aka.ms/powershell-release?tag=stable" -ForegroundColor Yellow
 }
 
 # ====================================
-# VALIDACIÓN 3: ADAPTADOR WI-FI
+# VALIDACION 3: ADAPTADOR WI-FI
 # ====================================
 
 Write-SectionHeader "3. ADAPTADOR WI-FI"
@@ -157,7 +157,7 @@ try {
     if ($wifiAvailable) {
         $wifiDetails = "Adaptador: $($wifiAdapter.Name) - Estado: $($wifiAdapter.Status)"
     } else {
-        $wifiDetails = "No se detectó ningún adaptador Wi-Fi"
+        $wifiDetails = "No se detecto ningun adaptador Wi-Fi"
     }
 } catch {
     $wifiAvailable = $false
@@ -177,12 +177,12 @@ Write-CheckResult -CheckName "Adaptador Wi-Fi" -Passed $wifiAvailable -Details $
 if (-not $wifiAvailable) {
     Write-Host ""
     Write-Host "NOTA:" -ForegroundColor Yellow
-    Write-Host "  Si el equipo usa conexión por cable, puedes continuar" -ForegroundColor Yellow
-    Write-Host "  pero el script de configuración Wi-Fi fallará." -ForegroundColor Yellow
+    Write-Host "  Si el equipo usa conexion por cable, puedes continuar" -ForegroundColor Yellow
+    Write-Host "  pero el script de configuracion Wi-Fi fallara." -ForegroundColor Yellow
 }
 
 # ====================================
-# VALIDACIÓN 4: WINGET INSTALADO
+# VALIDACION 4: WINGET INSTALADO
 # ====================================
 
 Write-SectionHeader "4. WINGET (WINDOWS PACKAGE MANAGER)"
@@ -195,9 +195,9 @@ try {
     $wingetVersionOutput = winget --version 2>&1
     if ($wingetVersionOutput -match "v(\d+\.\d+\.\d+)") {
         $wingetVersion = $matches[1]
-        $wingetDetails = "Instalado - Versión: v$wingetVersion"
+        $wingetDetails = "Instalado - Version: v$wingetVersion"
     } else {
-        $wingetDetails = "Instalado (versión no detectada)"
+        $wingetDetails = "Instalado (version no detectada)"
     }
 } catch {
     $wingetAvailable = $false
@@ -216,25 +216,25 @@ Write-CheckResult -CheckName "Winget" -Passed $wingetAvailable -Details $checks[
 
 if (-not $wingetAvailable) {
     Write-Host ""
-    Write-Host "SOLUCIÓN:" -ForegroundColor Yellow
+    Write-Host "SOLUCION:" -ForegroundColor Yellow
     Write-Host "  Winget viene preinstalado en Windows 11 y Windows 10 1809 o superior" -ForegroundColor Yellow
-    Write-Host "  Si no está disponible:" -ForegroundColor Yellow
+    Write-Host "  Si no esta disponible:" -ForegroundColor Yellow
     Write-Host "    1. Instala 'App Installer' desde Microsoft Store" -ForegroundColor Yellow
     Write-Host "    2. O descarga desde: https://aka.ms/getwinget" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "  NOTA: Las instalaciones de Winget fallarán sin esta herramienta" -ForegroundColor Yellow
+    Write-Host "  NOTA: Las instalaciones de Winget fallaran sin esta herramienta" -ForegroundColor Yellow
 }
 
 # ====================================
-# VALIDACIÓN 5: ARCHIVO CONFIG.PS1
+# VALIDACION 5: ARCHIVO CONFIG.PS1
 # ====================================
 
-Write-SectionHeader "5. ARCHIVO DE CONFIGURACIÓN"
+Write-SectionHeader "5. ARCHIVO DE CONFIGURACION"
 
 $configExists = Test-Path $ConfigPath
 
 $checks += [PSCustomObject]@{
-    Category = "Configuración"
+    Category = "Configuracion"
     Check = "Archivo config.ps1"
     Passed = $configExists
     Critical = $true
@@ -245,16 +245,16 @@ Write-CheckResult -CheckName "Archivo config.ps1" -Passed $configExists -Details
 
 if (-not $configExists) {
     Write-Host ""
-    Write-Host "SOLUCIÓN:" -ForegroundColor Yellow
+    Write-Host "SOLUCION:" -ForegroundColor Yellow
     Write-Host "  1. Copia 'example-config.ps1' a 'config.ps1'" -ForegroundColor Yellow
-    Write-Host "  2. Edita 'config.ps1' con tu configuración" -ForegroundColor Yellow
+    Write-Host "  2. Edita 'config.ps1' con tu configuracion" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "  Comando rápido:" -ForegroundColor Cyan
+    Write-Host "  Comando rapido:" -ForegroundColor Cyan
     Write-Host "    Copy-Item '.\example-config.ps1' '.\config.ps1'" -ForegroundColor Gray
 }
 
 # ====================================
-# VALIDACIÓN 6: CREDENCIALES CONFIGURADAS
+# VALIDACION 6: CREDENCIALES CONFIGURADAS
 # ====================================
 
 Write-SectionHeader "6. CREDENCIALES SEGURAS (OPCIONAL)"
@@ -279,7 +279,7 @@ if ($secureConfigExists) {
         $credPassed = $false
     }
 } else {
-    $credSummary = "No configuradas (se usará texto plano de config.ps1)"
+    $credSummary = "No configuradas (se usara texto plano de config.ps1)"
     $credPassed = $false
 }
 
@@ -295,15 +295,15 @@ Write-CheckResult -CheckName "Credenciales Cifradas" -Passed $credPassed -Detail
 
 if (-not $credPassed) {
     Write-Host ""
-    Write-Host "RECOMENDACIÓN:" -ForegroundColor Yellow
+    Write-Host "RECOMENDACION:" -ForegroundColor Yellow
     Write-Host "  Ejecuta '.\scripts\Setup-Credentials.ps1' para configurar credenciales seguras" -ForegroundColor Yellow
-    Write-Host "  Esto cifrará contraseñas usando DPAPI de Windows" -ForegroundColor Yellow
+    Write-Host "  Esto cifrara contrasenas usando DPAPI de Windows" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "  ALTERNATIVA: Usa texto plano en config.ps1 (no recomendado)" -ForegroundColor Gray
 }
 
 # ====================================
-# VALIDACIÓN 7: ESPACIO EN DISCO
+# VALIDACION 7: ESPACIO EN DISCO
 # ====================================
 
 Write-SectionHeader "7. ESPACIO EN DISCO"
@@ -313,11 +313,11 @@ try {
     $freeSpaceGB = [Math]::Round($systemDrive.Free / 1GB, 2)
     $diskSpaceOk = $freeSpaceGB -ge $MinDiskSpaceGB
 
-    $diskDetails = "Espacio libre: $freeSpaceGB GB (Mínimo: $MinDiskSpaceGB GB)"
+    $diskDetails = "Espacio libre: $freeSpaceGB GB (Minimo: $MinDiskSpaceGB GB)"
 } catch {
     $diskSpaceOk = $false
     $freeSpaceGB = 0
-    $diskDetails = "No se pudo obtener información de disco"
+    $diskDetails = "No se pudo obtener informacion de disco"
 }
 
 $checks += [PSCustomObject]@{
@@ -333,12 +333,12 @@ Write-CheckResult -CheckName "Espacio en Disco" -Passed $diskSpaceOk -Details $c
 if (-not $diskSpaceOk) {
     Write-Host ""
     Write-Host "ADVERTENCIA:" -ForegroundColor Yellow
-    Write-Host "  Espacio insuficiente puede causar fallos en instalación de aplicaciones" -ForegroundColor Yellow
+    Write-Host "  Espacio insuficiente puede causar fallos en instalacion de aplicaciones" -ForegroundColor Yellow
     Write-Host "  Libera espacio antes de continuar" -ForegroundColor Yellow
 }
 
 # ====================================
-# VALIDACIÓN 8: CONECTIVIDAD DE RED (BÁSICA)
+# VALIDACION 8: CONECTIVIDAD DE RED (BÁSICA)
 # ====================================
 
 Write-SectionHeader "8. CONECTIVIDAD DE RED"
@@ -365,8 +365,8 @@ Write-CheckResult -CheckName "Conectividad de Red" -Passed $networkTest -Details
 if (-not $networkTest) {
     Write-Host ""
     Write-Host "NOTA:" -ForegroundColor Yellow
-    Write-Host "  Sin Internet, las instalaciones de Winget fallarán" -ForegroundColor Yellow
-    Write-Host "  Configura la conexión de red antes de continuar" -ForegroundColor Yellow
+    Write-Host "  Sin Internet, las instalaciones de Winget fallaran" -ForegroundColor Yellow
+    Write-Host "  Configura la conexion de red antes de continuar" -ForegroundColor Yellow
 }
 
 # ====================================
@@ -413,7 +413,7 @@ if ($canProceed) {
         Write-Host ""
     }
 
-    Write-Host "Presiona Enter para continuar con la configuración..." -ForegroundColor Cyan
+    Write-Host "Presiona Enter para continuar con la configuracion..." -ForegroundColor Cyan
     Read-Host
     exit 0
 
@@ -429,7 +429,7 @@ if ($canProceed) {
     }
     Write-Host ""
 
-    Write-Host "Resuelve los problemas críticos antes de continuar." -ForegroundColor Yellow
+    Write-Host "Resuelve los problemas criticos antes de continuar." -ForegroundColor Yellow
     Write-Host ""
     Write-Host "Presiona Enter para salir..." -ForegroundColor Gray
     Read-Host
