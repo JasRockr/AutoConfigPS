@@ -334,14 +334,28 @@ try {
     }
 
     # Verificar y crear perfil Wi-Fi
-    # $existingProfile = Get-WiFiProfile -Name $NetworkSSID -ErrorAction SilentlyContinue
-    $existingProfile = netsh wlan show profiles $NetworkSSID | Select-String -Pattern "Perfil" | Select-Object -First 1
-    if ($existingProfile -match "No se encuentra el perfil") {
-        Write-Host "Creando perfil para: $NetworkSSID" -ForegroundColor DarkBlue
-        Write-SuccessLog "No se encuentra el perfil de la red Wi-Fi: $NetworkSSID" 
-        Write-SuccessLog "Creando perfil para la red Wi-Fi: $NetworkSSID"
-        Write-SuccessLog "Contraseña escapada contiene ${$PswdplnEscaped.Length} caracteres (original: ${$Pswdpln.Length})" 
-        $wifiProfile = @"
+    # Eliminar perfil existente para asegurar que se use la configuración actualizada
+    $existingProfile = netsh wlan show profiles $NetworkSSID 2>&1 | Select-String -Pattern "Perfil" | Select-Object -First 1
+    
+    if ($existingProfile -and $existingProfile -notmatch "No se encuentra el perfil") {
+        Write-Host "  Eliminando perfil Wi-Fi existente: $NetworkSSID" -ForegroundColor Yellow
+        Write-SuccessLog "Perfil Wi-Fi existente encontrado, eliminando: $NetworkSSID"
+        
+        $deleteResult = netsh wlan delete profile name="$NetworkSSID" 2>&1
+        Write-SuccessLog "Resultado de eliminación: $deleteResult"
+        
+        if ($deleteResult -match "correctamente|successfully|eliminado") {
+            Write-Host "  [OK] Perfil anterior eliminado" -ForegroundColor Green
+        }
+        
+        Start-Sleep -Seconds 2
+    }
+    
+    # Crear nuevo perfil Wi-Fi
+    Write-Host "Creando perfil para: $NetworkSSID" -ForegroundColor DarkBlue
+    Write-SuccessLog "Creando perfil para la red Wi-Fi: $NetworkSSID"
+    
+    $wifiProfile = @"
 <?xml version="1.0"?>
 <WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
 <name>$NetworkSSID</name>
