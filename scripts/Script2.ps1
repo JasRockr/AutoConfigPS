@@ -389,7 +389,7 @@ function Test-ComputerNameInAD {
                     Write-SuccessLog "Nombre alternativo generado: $alternativeName"
                     break
                 } else {
-                    Write-Host "  [!] Intento $i/$maxAttempts: $testName también existe" -ForegroundColor Yellow
+                    Write-Host "  [!] Intento $i`/${maxAttempts}: $testName también existe" -ForegroundColor Yellow
                 }
             }
 
@@ -496,11 +496,15 @@ try {
     } else {
         # Validar acceso al controlador de dominio antes de intentar unión (nuevo en v0.0.4)
         Write-Host ""
+        Write-SuccessLog "Iniciando validación de controlador de dominio antes de unión"
         $dcValid = Test-DomainController -DomainName $DomainName -MaxRetries 3
         Write-Host ""
 
         if (-not $dcValid) {
-            Write-ErrorLog "No se pudo validar acceso al controlador de dominio"
+            Write-Host "❌ No se pudo validar el acceso al controlador de dominio" -ForegroundColor Red
+            Write-ErrorLog "[CRITICAL] No se pudo validar acceso al controlador de dominio: $DomainName"
+            Write-ErrorLog "  Se intentaron 3 validaciones sin éxito"
+            Write-ErrorLog "  Verifique conectividad de red y configuración DNS"
             throw "Error: No se puede acceder al controlador de dominio '$DomainName'"
         }
 
@@ -520,10 +524,15 @@ try {
             try {
                 Rename-Computer -NewName $nameCheck.AlternativeName -Force -PassThru | Out-Null
                 Write-Host "  [OK] Nombre del equipo cambiado a: $($nameCheck.AlternativeName)" -ForegroundColor Green
-                Write-SuccessLog "Nombre cambiado exitosamente a: $($nameCheck.AlternativeName)"
+                Write-SuccessLog "[SUCCESS] Nombre cambiado exitosamente de '$currentComputerName' a '$($nameCheck.AlternativeName)'"
                 $currentComputerName = $nameCheck.AlternativeName
             } catch {
-                Write-ErrorLog "Error al cambiar nombre del equipo: $($_.Exception.Message)"
+                Write-Host "  [ERROR] No se pudo cambiar el nombre del equipo" -ForegroundColor Red
+                Write-Host "  Mensaje: $($_.Exception.Message)" -ForegroundColor Gray
+                Write-ErrorLog "[ERROR] Fallo al cambiar nombre del equipo"
+                Write-ErrorLog "  Nombre original: $currentComputerName"
+                Write-ErrorLog "  Nombre destino: $($nameCheck.AlternativeName)"
+                Write-ErrorLog "  Mensaje: $($_.Exception.Message)"
                 throw "Error: No se pudo cambiar el nombre del equipo a alternativo"
             }
 
@@ -571,15 +580,67 @@ try {
         }
 
         # Ejecutar unión al dominio
-        Add-Computer @addComputerParams -Restart
-
-        Write-Host "El equipo se unió correctamente al dominio. Reiniciando..." -ForegroundColor Green
-        Write-SuccessLog "El equipo se unió correctamente al dominio: $DomainName"
+        Write-Host ""
+        Write-Host "Ejecutando unión al dominio..." -ForegroundColor Cyan
+        Write-SuccessLog "Iniciando proceso de unión al dominio: $DomainName (Equipo: $currentComputerName)"
+        
+        try {
+            Add-Computer @addComputerParams -ErrorAction Stop
+            
+            Write-Host ""
+            Write-Host "✅ El equipo se unió correctamente al dominio '$DomainName'" -ForegroundColor Green
+            Write-SuccessLog "[SUCCESS] Equipo unido exitosamente al dominio: $DomainName (Equipo: $currentComputerName)"
+            Write-Host ""
+            Write-Host "IMPORTANTE: El equipo debe reiniciarse para completar la unión al dominio." -ForegroundColor Yellow
+            Write-SuccessLog "Unión al dominio completada - reinicio pendiente para aplicar cambios"
+            
+        } catch {
+            Write-Host ""
+            Write-Host "❌ Error al unir el equipo al dominio" -ForegroundColor Red
+            Write-Host ""
+            Write-Host "Detalles del error:" -ForegroundColor Yellow
+            Write-Host "  Mensaje: $($_.Exception.Message)" -ForegroundColor Gray
+            Write-Host "  Categoría: $($_.CategoryInfo.Category)" -ForegroundColor Gray
+            if ($_.FullyQualifiedErrorId) {
+                Write-Host "  ErrorID: $($_.FullyQualifiedErrorId)" -ForegroundColor Gray
+            }
+            Write-Host ""
+            Write-Host "Posibles causas:" -ForegroundColor Yellow
+            Write-Host "  - Credenciales de dominio incorrectas o sin permisos" -ForegroundColor Gray
+            Write-Host "  - Nombre del equipo ya existe en AD" -ForegroundColor Gray
+            Write-Host "  - No se puede contactar el controlador de dominio" -ForegroundColor Gray
+            Write-Host "  - OU especificada no existe o sin permisos" -ForegroundColor Gray
+            Write-Host ""
+            
+            # Registrar error detallado en el log
+            Write-ErrorLog "[CRITICAL] Error al unir equipo al dominio"
+            Write-ErrorLog "  Dominio: $DomainName"
+            Write-ErrorLog "  Equipo: $currentComputerName"
+            Write-ErrorLog "  Usuario: $Useradmin"
+            if ($OUPath) { Write-ErrorLog "  OU: $OUPath" }
+            Write-ErrorLog "  Mensaje: $($_.Exception.Message)"
+            Write-ErrorLog "  Categoría: $($_.CategoryInfo.Category)"
+            if ($_.FullyQualifiedErrorId) { Write-ErrorLog "  ErrorID: $($_.FullyQualifiedErrorId)" }
+            Write-ErrorLog "  StackTrace: $($_.ScriptStackTrace)"
+            
+            throw
+        }
+        
         Start-Sleep -Seconds $Delay
     }
 } catch {
-    Write-Error "Error al unir el equipo al dominio: $($_.Exception.Message)"
-    Write-ErrorLog "Error al unir el equipo al dominio: $($_.Exception.Message)"
+    Write-Host ""
+    Write-Host "❌ FALLO CRÍTICO en el proceso de unión al dominio" -ForegroundColor Red
+    Write-Host "El script se detendrá." -ForegroundColor Red
+    Write-Host ""
+    
+    Write-ErrorLog "[FATAL] Fallo crítico en proceso de unión al dominio"
+    Write-ErrorLog "  Mensaje: $($_.Exception.Message)"
+    if ($_.InvocationInfo.ScriptLineNumber) {
+        Write-ErrorLog "  Línea: $($_.InvocationInfo.ScriptLineNumber)"
+    }
+    Write-ErrorLog "  StackTrace: $($_.ScriptStackTrace)"
+    
     Start-Sleep -Seconds $Delay
     exit 1
 }
@@ -660,16 +721,20 @@ try {
     if ($existingTask) {
         Unregister-ScheduledTask -TaskName $DelTaskName -Confirm:$false
         Write-Host "Tarea programada '$DelTaskName' eliminada correctamente." -ForegroundColor Green
-        Write-SuccessLog "Tarea programada '$DelTaskName' eliminada correctamente."
+        Write-SuccessLog "[SUCCESS] Tarea programada '$DelTaskName' eliminada correctamente"
     } else {
         Write-Host "La tarea programada '$DelTaskName' no existe." -ForegroundColor Yellow
-        Write-SuccessLog "La tarea programada '$DelTaskName' no existe."
+        Write-SuccessLog "INFO: La tarea programada '$DelTaskName' no existe (posiblemente ya eliminada)"
     }
 } catch {
-    Write-Error "Error al eliminar la tarea programada '$DelTaskName': $($_.Exception.Message)"
-    Write-ErrorLog "Error al eliminar la tarea programada '$DelTaskName': $($_.Exception.Message)"
+    Write-Host "⚠️ Error al eliminar la tarea programada '$DelTaskName'" -ForegroundColor Yellow
+    Write-Host "Mensaje: $($_.Exception.Message)" -ForegroundColor Gray
+    Write-ErrorLog "[WARNING] Error al eliminar tarea programada anterior"
+    Write-ErrorLog "  Tarea: $DelTaskName"
+    Write-ErrorLog "  Mensaje: $($_.Exception.Message)"
+    Write-ErrorLog "  Continuando ejecución del script..."
     Start-Sleep -Seconds $Delay
-    exit 0
+    # No salir con error, continuar
 }
 # --
 
