@@ -331,7 +331,8 @@ try {
     if ($existingProfile -match "No se encuentra el perfil") {
         Write-Host "Creando perfil para: $NetworkSSID" -ForegroundColor DarkBlue
         Write-SuccessLog "No se encuentra el perfil de la red Wi-Fi: $NetworkSSID" 
-        Write-SuccessLog "Creando perfil para la red Wi-Fi: $NetworkSSID" 
+        Write-SuccessLog "Creando perfil para la red Wi-Fi: $NetworkSSID"
+        Write-SuccessLog "Contraseña escapada contiene ${$PswdplnEscaped.Length} caracteres (original: ${$Pswdpln.Length})" 
         $wifiProfile = @"
 <?xml version="1.0"?>
 <WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
@@ -360,9 +361,22 @@ try {
 "@
         $tempFile = New-TemporaryFile | Rename-Item -NewName {"$NetworkSSID.xml"} -PassThru
         $wifiProfile | Out-File $tempFile.FullName -Encoding UTF8 -Force
-        netsh wlan add profile filename="$($tempFile.FullName)" | Out-Null 
-        Remove-Item -Path $tempFile.FullName -Force -ErrorAction SilentlyContinue
-        Write-SuccessLog "Perfil de red Wi-Fi creado correctamente: $NetworkSSID" 
+        
+        Write-SuccessLog "Perfil XML creado en: $($tempFile.FullName)"
+        
+        # Agregar perfil con netsh y capturar resultado
+        $netshResult = netsh wlan add profile filename="$($tempFile.FullName)" 2>&1
+        Write-SuccessLog "Resultado de netsh add profile: $netshResult"
+        
+        if ($netshResult -match "correctamente|successfully|agregado") {
+            Write-Host "  [OK] Perfil Wi-Fi agregado correctamente" -ForegroundColor Green
+            Write-SuccessLog "Perfil de red Wi-Fi creado correctamente: $NetworkSSID"
+        } else {
+            Write-Host "  [!] Posible problema al agregar perfil" -ForegroundColor Yellow
+            Write-ErrorLog "Advertencia en netsh add profile: $netshResult"
+        }
+        
+        Remove-Item -Path $tempFile.FullName -Force -ErrorAction SilentlyContinue 
     }
 
     # Limpiar las variables de texto plano después de su uso
@@ -371,11 +385,18 @@ try {
 
     # Conectar a la red Wi-Fi
     Write-Host "Conectando a la red: $NetworkSSID" -ForegroundColor Blue
-    netsh wlan connect name=$NetworkSSID
+    Write-SuccessLog "Intentando conectar a red Wi-Fi: $NetworkSSID"
+    
+    $connectResult = netsh wlan connect name=$NetworkSSID 2>&1
+    Write-SuccessLog "Resultado de netsh connect: $connectResult"
+    
     Start-Sleep -Seconds $Delay 
 
     # Verificar conexión
-    $newConnection = netsh wlan show interfaces | Select-String -Pattern "SSID" | Select-Object -First 1
+    $interfaceInfo = netsh wlan show interfaces 2>&1
+    Write-SuccessLog "Estado de interfaz Wi-Fi: $($interfaceInfo | Out-String)"
+    
+    $newConnection = $interfaceInfo | Select-String -Pattern "SSID" | Select-Object -First 1
     if ($newConnection -match $NetworkSSID) {
         Write-Host "Se ha conectado a la red Wi-Fi: $NetworkSSID" -ForegroundColor Green
         Write-SuccessLog "Conexión Wi-Fi establecida correctamente: $NetworkSSID"
@@ -383,16 +404,27 @@ try {
         # Intentar reconectar si la primera conexión falla
         Write-Host "2/2 - Conectando nuevamente a la red: $NetworkSSID" -ForegroundColor Yellow
         Write-SuccessLog "Intentando reconectar a la red Wi-Fi: $NetworkSSID"
-        netsh wlan connect name=$NetworkSSID
+        Write-ErrorLog "Primera conexión falló. SSID esperado: '$NetworkSSID', Encontrado: '$newConnection'"
+        
+        $connectResult2 = netsh wlan connect name=$NetworkSSID 2>&1
+        Write-SuccessLog "Segundo intento - Resultado de netsh connect: $connectResult2"
+        
         Start-Sleep -Seconds $Delay
 
         # Verificar conexión nuevamente
-        $newConnection = netsh wlan show interfaces | Select-String -Pattern "SSID" | Select-Object -First 1
+        $interfaceInfo2 = netsh wlan show interfaces 2>&1
+        $newConnection = $interfaceInfo2 | Select-String -Pattern "SSID" | Select-Object -First 1
+        
         if ($newConnection -match $NetworkSSID) {
             Write-Host "Se ha conectado correctamente a $NetworkSSID" -ForegroundColor Green
             Write-SuccessLog "Conexión Wi-Fi establecida correctamente: $NetworkSSID"
         } else {
+            Write-Host "❌ Error: No se pudo conectar a la red Wi-Fi" -ForegroundColor Red
+            Write-Host "  SSID esperado: $NetworkSSID" -ForegroundColor Gray
+            Write-Host "  Estado actual: $newConnection" -ForegroundColor Gray
             Write-ErrorLog "Error en conexión Wi-Fi: No se pudo validar la conexión"
+            Write-ErrorLog "SSID esperado: '$NetworkSSID', Estado: '$newConnection'"
+            Write-ErrorLog "Interfaz completa: $($interfaceInfo2 | Out-String)"
             throw "Ha ocurrido un Error: No se pudo validar la conexion"
         }
     }

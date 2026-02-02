@@ -248,14 +248,14 @@ function Install-WingetApp {
         if ($success) {
             $message = if ($exitCode -eq -1978335189) { "Ya instalado" } else { "Instalado correctamente" }
             Write-Host "    [OK] $message (${duration.TotalSeconds:N1}s)" -ForegroundColor Green
-            Write-SuccessLog "$AppName: $message - Duración: ${duration.TotalSeconds:N1}s"
+            Write-SuccessLog "`/${AppName}: $message - Duración: ${duration.TotalSeconds:N1}s"
         } else {
             $message = "Error (Exit code: $exitCode)"
             Write-Host "    [X] $message" -ForegroundColor Red
-            Write-ErrorLog "$AppName: $message - Duración: ${duration.TotalSeconds:N1}s"
+            Write-ErrorLog "$`/${AppName}: $message - Duración: ${duration.TotalSeconds:N1}s"
 
             if ($errorOutput) {
-                Write-ErrorLog "$AppName - Error output: $errorOutput"
+                Write-ErrorLog "`/${AppName} - Error output: $errorOutput"
             }
         }
 
@@ -328,7 +328,7 @@ function Install-NetworkApp {
         # Validar existencia del archivo
         if (-not (Test-Path $InstallerPath)) {
             Write-Host "    [X] Archivo no encontrado: $InstallerPath" -ForegroundColor Red
-            Write-ErrorLog "$AppName: Archivo no encontrado en $InstallerPath"
+            Write-ErrorLog "$`/${AppName}: Archivo no encontrado en $InstallerPath"
 
             return @{
                 Success = $false
@@ -388,12 +388,11 @@ function Install-NetworkApp {
         if ($success) {
             $message = if ($exitCode -eq 3010) { "Instalado (requiere reinicio)" } else { "Instalado correctamente" }
             Write-Host "    [OK] $message (${duration.TotalSeconds:N1}s)" -ForegroundColor Green
-            Write-SuccessLog "$AppName: $message - Duración: ${duration.TotalSeconds:N1}s"
+            Write-SuccessLog "$`/${AppName}: $message - Duración: ${duration.TotalSeconds:N1}s"
         } else {
             $message = "Error (Exit code: $exitCode)"
             Write-Host "    [X] $message" -ForegroundColor Red
-            Write-ErrorLog "$AppName: $message - Duración: ${duration.TotalSeconds:N1}s"
-
+            Write-ErrorLog "$`/${AppName}: $message - Duración: ${duration.TotalSeconds:N1}s"
             if ($errorOutput) {
                 Write-ErrorLog "$AppName - Error output: $errorOutput"
             }
