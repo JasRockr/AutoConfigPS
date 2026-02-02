@@ -317,6 +317,14 @@ $Pswdpln = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
 # Esto es critico para contraseñas con caracteres especiales como: < > & " ' /
 $PswdplnEscaped = [System.Security.SecurityElement]::Escape($Pswdpln)
 
+# DIAGNÓSTICO: Registrar información de la contraseña (temporalmente)
+Write-SuccessLog "DEBUG - Longitud contraseña original: $($Pswdpln.Length)"
+Write-SuccessLog "DEBUG - Longitud contraseña escapada: $($PswdplnEscaped.Length)"
+Write-SuccessLog "DEBUG - Contraseñas son iguales: $($Pswdpln -eq $PswdplnEscaped)"
+if ($Pswdpln -ne $PswdplnEscaped) {
+    Write-SuccessLog "DEBUG - Se aplicó escape XML a la contraseña"
+}
+
 # 1. Configurar red Wi-Fi
 try {
     # Validar variables de configuración
@@ -360,9 +368,18 @@ try {
 </WLANProfile>
 "@
         $tempFile = New-TemporaryFile | Rename-Item -NewName {"$NetworkSSID.xml"} -PassThru
-        $wifiProfile | Out-File $tempFile.FullName -Encoding UTF8 -Force
+        
+        # Guardar con codificación UTF-8 SIN BOM (crítico para netsh)
+        $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+        [System.IO.File]::WriteAllText($tempFile.FullName, $wifiProfile, $utf8NoBom)
         
         Write-SuccessLog "Perfil XML creado en: $($tempFile.FullName)"
+        Write-SuccessLog "DEBUG - Archivo XML guardado con UTF-8 sin BOM"
+        
+        # DIAGNÓSTICO: Guardar copia del perfil para inspección
+        $debugProfilePath = "$logDirectory\wifi-profile-debug.xml"
+        Copy-Item -Path $tempFile.FullName -Destination $debugProfilePath -Force -ErrorAction SilentlyContinue
+        Write-SuccessLog "DEBUG - Copia del perfil guardada en: $debugProfilePath"
         
         # Agregar perfil con netsh y capturar resultado
         $netshResult = netsh wlan add profile filename="$($tempFile.FullName)" 2>&1
