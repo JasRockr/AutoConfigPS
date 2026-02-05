@@ -329,8 +329,6 @@ if (Get-Variable -Name 'SecureNetworkPass' -ErrorAction SilentlyContinue) {
     Read-Host
     exit 1
 }
-    throw "Error: Falta configuración de contraseña Wi-Fi"
-}
 
 #! Convertir SecureString a texto plano (requerido para perfil XML Wi-Fi)
 $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($WifiSecurePass)
