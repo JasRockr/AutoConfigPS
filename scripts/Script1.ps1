@@ -428,8 +428,7 @@ try {
             Write-ErrorLog "Advertencia en netsh add profile: $netshResult"
         }
         
-        Remove-Item -Path $tempFile.FullName -Force -ErrorAction SilentlyContinue 
-    }
+        Remove-Item -Path $tempFile.FullName -Force -ErrorAction SilentlyContinue
 
     # Limpiar las variables de texto plano después de su uso
     [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
