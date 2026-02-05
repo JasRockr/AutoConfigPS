@@ -84,7 +84,7 @@ echo.
 
 :: Ejecutar el script principal como Admin
 :: echo [%DATE% %TIME%] Ejecutando script principal: %FULL_PATH%\%SCRIPT_INIT% >> %LOG%
-powershell -Command "Start-Process powershell -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File \"%FULL_PATH%\%SCRIPT_INIT%\"' -Verb RunAs"
+powershell -Command "Start-Process powershell -ArgumentList '-NoExit -NoProfile -ExecutionPolicy Bypass -File \"%FULL_PATH%\%SCRIPT_INIT%\"' -Verb RunAs"
 
 :: Validar el codigo de salida
 :: echo [%DATE% %TIME%] Validando codigo de salida: %ERRORLEVEL% >> %LOG%

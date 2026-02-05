@@ -46,14 +46,26 @@ $ConfigPath = "$PSScriptRoot\..\config.ps1"
 # Validar si el archivo de configuración se cargó correctamente
 # TODO: Migrar funcion al modulo de validación
 if (Test-Path $ConfigPath) {
-    # Importar archivo de configuración
-    . $ConfigPath   
-    Write-Host "Archivo 'config' cargado correctamente." -ForegroundColor Green
+    try {
+        # Importar archivo de configuración
+        . $ConfigPath
+        Write-Host "Archivo 'config' cargado correctamente." -ForegroundColor Green
+    } catch {
+        Write-Host "ERROR al cargar el archivo de configuración:" -ForegroundColor Red
+        Write-Host $_.Exception.Message -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Presiona Enter para salir..." -ForegroundColor Yellow
+        Read-Host
+        exit 1
+    }
 } else {
     Write-Host "Parece que hubo un error importando las configuraciones." -ForegroundColor DarkRed
     Write-Host "Confirma que el archivo 'config.ps1' exista en la carpeta raíz del script." -ForegroundColor DarkRed
+    Write-Host "Ruta esperada: $ConfigPath" -ForegroundColor Yellow
     # TODO: Crear archivo (config-default.ps1) de configuración predeterminado si no se encuentra
-    Start-Sleep -Seconds $Delay
+    Write-Host ""
+    Write-Host "Presiona Enter para salir..." -ForegroundColor Yellow
+    Read-Host
     exit 1
 }
 
@@ -305,7 +317,18 @@ if (Get-Variable -Name 'SecureNetworkPass' -ErrorAction SilentlyContinue) {
     Write-SuccessLog "Credenciales Wi-Fi: usando formato texto plano (no recomendado)"
     $WifiSecurePass = ConvertTo-SecureString $NetworkPass -AsPlainText -Force
 } else {
+    Write-Host "ERROR: No se proporcionaron credenciales de Wi-Fi" -ForegroundColor Red
     Write-ErrorLog "No se proporcionaron credenciales de Wi-Fi"
+    Write-Host ""
+    Write-Host "Solución:" -ForegroundColor Yellow
+    Write-Host "  1. Ejecuta Setup-Credentials.ps1 para generar credenciales cifradas, O" -ForegroundColor Gray
+    Write-Host "  2. Define la variable en config.ps1:" -ForegroundColor Gray
+    Write-Host "     `$NetworkPass = 'contraseña_wifi'" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "Presiona Enter para salir..." -ForegroundColor Yellow
+    Read-Host
+    exit 1
+}
     throw "Error: Falta configuración de contraseña Wi-Fi"
 }
 
@@ -661,6 +684,11 @@ if ($confirmation -eq 'S') {
 # ----------------------------------------------------------------
 $Host.UI.RawUI.WindowTitle = $tituloPredeterminado
 Write-SuccessLog "Script #1 finalizado."
-Write-ErrorLog "Script #1 finalizado."
+
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Green
+Write-Host "  SCRIPT #1 COMPLETADO EXITOSAMENTE" -ForegroundColor Green
+Write-Host "========================================" -ForegroundColor Green
+Write-Host ""
 
 # Fin del script
