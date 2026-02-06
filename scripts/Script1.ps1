@@ -231,7 +231,7 @@ function Test-NetworkConnectivity {
             } | Select-Object -First 1
 
             if (-not $wifiAdapter) {
-                Write-Host "  [!] Adaptador Wi-Fi no está activo" -ForegroundColor Yellow
+                Write-Host '  [!] Adaptador Wi-Fi no está activo' -ForegroundColor Yellow
                 Start-Sleep -Seconds $DelaySeconds
                 continue
             }
@@ -244,7 +244,7 @@ function Test-NetworkConnectivity {
                 Select-Object -First 1
 
             if (-not $ipAddress) {
-                Write-Host "  [!] IP válida no asignada" -ForegroundColor Yellow
+                Write-Host '  [!] IP válida no asignada' -ForegroundColor Yellow
                 Start-Sleep -Seconds $DelaySeconds
                 continue
             }
@@ -258,7 +258,7 @@ function Test-NetworkConnectivity {
                 Select-Object -First 1
 
             if (-not $gateway) {
-                Write-Host "  [!] Gateway no encontrado" -ForegroundColor Yellow
+                Write-Host '  [!] Gateway no encontrado' -ForegroundColor Yellow
                 Start-Sleep -Seconds $DelaySeconds
                 continue
             }
@@ -269,7 +269,7 @@ function Test-NetworkConnectivity {
             $gatewayReachable = Test-Connection -ComputerName $gateway.NextHop -Count 2 -Quiet -ErrorAction SilentlyContinue
 
             if (-not $gatewayReachable) {
-                Write-Host "  [!] Gateway no alcanzable" -ForegroundColor Yellow
+                Write-Host '  [!] Gateway no alcanzable' -ForegroundColor Yellow
                 Start-Sleep -Seconds $DelaySeconds
                 continue
             }

@@ -552,7 +552,7 @@ try {
     $wingetAvailable = Get-Command winget -ErrorAction SilentlyContinue
 
     if (-not $wingetAvailable) {
-        Write-Host "  [!] Winget no está disponible en este sistema" -ForegroundColor Yellow
+        Write-Host '  [!] Winget no está disponible en este sistema' -ForegroundColor Yellow
         Write-ErrorLog "Winget no está disponible - las instalaciones de Winget fallarán"
     } else {
         winget source reset --force 2>&1 | Out-Null
@@ -588,7 +588,7 @@ if (Test-Path $appsPath) {
 
 # Si no hay apps de JSON ni de config, notificar
 if (-not $apps -or $apps.Count -eq 0) {
-    Write-Host "[!] No se encontraron aplicaciones para instalar" -ForegroundColor Yellow
+    Write-Host '[!] No se encontraron aplicaciones para instalar' -ForegroundColor Yellow
     Write-SuccessLog "No se encontraron aplicaciones configuradas para instalación"
     Write-Host ""
 } else {
@@ -602,7 +602,7 @@ if (-not $apps -or $apps.Count -eq 0) {
     foreach ($app in $apps) {
         # Filtrar objetos que no representan aplicaciones válidas
         if (-not $app.Name -or -not $app.Source) {
-            Write-Host "[!] Objeto no válido en lista de aplicaciones - omitiendo" -ForegroundColor Yellow
+            Write-Host '[!] Objeto no válido en lista de aplicaciones - omitiendo' -ForegroundColor Yellow
             Write-ErrorLog "Objeto no válido de aplicación en la lista"
             continue
         }
@@ -663,7 +663,8 @@ if (-not $apps -or $apps.Count -eq 0) {
     if ($successCount -gt 0) {
         Write-Host "Aplicaciones instaladas correctamente:" -ForegroundColor Green
         $installResults | Where-Object { $_.Success } | ForEach-Object {
-            Write-Host "  [OK] $($_.AppName) - $($_.Message) ($('{0:N1}' -f $_.Duration.TotalSeconds)s)" -ForegroundColor Green
+            $durationSeconds = '{0:N1}' -f $_.Duration.TotalSeconds
+            Write-Host "  [OK] $($_.AppName) - $($_.Message) ($durationSeconds" + 's)' -ForegroundColor Green
         }
         Write-Host ""
     }

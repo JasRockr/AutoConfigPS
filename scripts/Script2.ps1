@@ -304,12 +304,12 @@ function Test-DomainController {
                         Write-SuccessLog "Validación de DC exitosa - Dominio: $DomainName, DC: $dcName"
                         return $true
                     } else {
-                        Write-Host "  [!] DC encontrado pero no responde a ping" -ForegroundColor Yellow
+                        Write-Host '  [!] DC encontrado pero no responde a ping' -ForegroundColor Yellow
                         Write-ErrorLog "DC encontrado pero no responde: $dcName (intento $attempt/$MaxRetries)"
                     }
                 }
             } catch {
-                Write-Host "  [!] No se pudo resolver DC via DNS SRV" -ForegroundColor Yellow
+                Write-Host '  [!] No se pudo resolver DC via DNS SRV' -ForegroundColor Yellow
                 Write-ErrorLog "Error en resolución DNS SRV: $($_.Exception.Message)"
             }
 
@@ -332,7 +332,7 @@ function Test-DomainController {
                     }
                 }
             } catch {
-                Write-Host "  [!] No se pudo resolver dominio directamente" -ForegroundColor Yellow
+                Write-Host '  [!] No se pudo resolver dominio directamente' -ForegroundColor Yellow
                 Write-ErrorLog "Error en resolución DNS directa: $($_.Exception.Message)"
             }
 
@@ -355,11 +355,12 @@ function Test-DomainController {
                     }
                 }
             } catch {
-                Write-Host "  [!] nltest no disponible o falló" -ForegroundColor Yellow
+                Write-Host '  [!] nltest no disponible o falló' -ForegroundColor Yellow
             }
 
         } catch {
-            Write-Host "  [!] Error en validación: $($_.Exception.Message)" -ForegroundColor Yellow
+            Write-Host '  [!] Error en validación: ' -NoNewline -ForegroundColor Yellow
+            Write-Host "$($_.Exception.Message)" -ForegroundColor Yellow
             Write-ErrorLog "Error en validación de DC (intento $attempt/$MaxRetries): $($_.Exception.Message)"
         }
 
@@ -445,7 +446,7 @@ function Test-ComputerNameInAD {
                 }
             }
         } catch {
-            Write-Host "  [!] No se pudo verificar con DirectorySearcher" -ForegroundColor Yellow
+            Write-Host '  [!] No se pudo verificar con DirectorySearcher' -ForegroundColor Yellow
             Write-ErrorLog "Error en DirectorySearcher: $($_.Exception.Message)"
             $nameExists = $false  # Asumimos que está disponible si no podemos verificar
         }
@@ -483,7 +484,8 @@ function Test-ComputerNameInAD {
                     Write-SuccessLog "Nombre alternativo generado: $alternativeName"
                     break
                 } else {
-                    Write-Host "  [!] Intento $i`/${maxAttempts}: $testName también existe" -ForegroundColor Yellow
+                    Write-Host "  [!] Intento $i`/${maxAttempts}: " -NoNewline -ForegroundColor Yellow
+                    Write-Host "$testName también existe" -ForegroundColor Yellow
                 }
             }
 
@@ -513,7 +515,7 @@ function Test-ComputerNameInAD {
         }
 
         # Si no pudimos verificar, asumimos que está disponible
-        Write-Host "  [!] No se pudo verificar nombre en AD - continuando" -ForegroundColor Yellow
+        Write-Host '  [!] No se pudo verificar nombre en AD - continuando' -ForegroundColor Yellow
         Write-SuccessLog "Verificación de nombre omitida - continuando con nombre actual"
 
         return @{
@@ -523,7 +525,8 @@ function Test-ComputerNameInAD {
         }
 
     } catch {
-        Write-Host "  [!] Error en validación: $($_.Exception.Message)" -ForegroundColor Yellow
+        Write-Host '  [!] Error en validación: ' -NoNewline -ForegroundColor Yellow
+        Write-Host "$($_.Exception.Message)" -ForegroundColor Yellow
         Write-ErrorLog "Error en Test-ComputerNameInAD: $($_.Exception.Message)"
 
         # En caso de error, permitir continuar
