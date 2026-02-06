@@ -41,18 +41,34 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 # 0. Cargar archivo de configuración
 # ----------------------------------------------------------------
 Write-Host "Cargando archivo de config..." -ForegroundColor Cyan
-$ConfigPath = "$PSScriptRoot\..\config.ps1"
+
+# Determinar la ruta base del proyecto
+$ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+$ProjectRoot = Split-Path -Parent $ScriptDir
+$ConfigPath = "$ProjectRoot\config.ps1"
 
 # Validar si el archivo de configuración se cargó correctamente
 # TODO: Migrar funcion al modulo de validación
 if (Test-Path $ConfigPath) {
     try {
+        # CRÍTICO: Cambiar el directorio de trabajo a la carpeta del proyecto
+        # Esto asegura que las rutas relativas en config.ps1 funcionen correctamente
+        $OriginalLocation = Get-Location
+        Set-Location -Path $ProjectRoot
+        
         # Importar archivo de configuración
         . $ConfigPath
         Write-Host "Archivo 'config' cargado correctamente." -ForegroundColor Green
+        
+        # Restaurar ubicación original (opcional)
+        # Set-Location -Path $OriginalLocation
+        
     } catch {
         Write-Host "ERROR al cargar el archivo de configuración:" -ForegroundColor Red
         Write-Host $_.Exception.Message -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Directorio actual: $(Get-Location)" -ForegroundColor Gray
+        Write-Host "Ruta config: $ConfigPath" -ForegroundColor Gray
         Write-Host ""
         Write-Host "Presiona Enter para salir..." -ForegroundColor Yellow
         Read-Host

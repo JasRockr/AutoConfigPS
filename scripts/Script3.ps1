@@ -39,12 +39,20 @@ Write-Host ""
 # 0. Cargar archivo de configuración
 # ----------------------------------------------------------------
 Write-Host "Cargando archivo de config..." -ForegroundColor Cyan
-$ConfigPath = "$PSScriptRoot\..\config.ps1"
+
+# Determinar la ruta base del proyecto
+$ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+$ProjectRoot = Split-Path -Parent $ScriptDir
+$ConfigPath = "$ProjectRoot\config.ps1"
 
 # Validar si el archivo de configuración se cargó correctamente
 # TODO: Migrar funcion al modulo de validación
 if (Test-Path $ConfigPath) {
     try {
+        # CRÍTICO: Cambiar el directorio de trabajo a la carpeta del proyecto
+        # Esto asegura que las rutas relativas en config.ps1 funcionen correctamente
+        Set-Location -Path $ProjectRoot
+        
         # Importar archivo de configuración
         . $ConfigPath
         Write-Host "Archivo 'config' cargado correctamente." -ForegroundColor Green
