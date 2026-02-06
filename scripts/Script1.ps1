@@ -338,14 +338,6 @@ $Pswdpln = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
 # Esto es critico para contraseñas con caracteres especiales como: < > & " ' /
 $PswdplnEscaped = [System.Security.SecurityElement]::Escape($Pswdpln)
 
-# DIAGNÓSTICO: Registrar información de la contraseña (temporalmente)
-Write-SuccessLog "DEBUG - Longitud contraseña original: $($Pswdpln.Length)"
-Write-SuccessLog "DEBUG - Longitud contraseña escapada: $($PswdplnEscaped.Length)"
-Write-SuccessLog "DEBUG - Contraseñas son iguales: $($Pswdpln -eq $PswdplnEscaped)"
-if ($Pswdpln -ne $PswdplnEscaped) {
-    Write-SuccessLog "DEBUG - Se aplicó escape XML a la contraseña"
-}
-
 # 1. Configurar red Wi-Fi
 try {
     # Validar variables de configuración
@@ -408,19 +400,13 @@ try {
         $utf8NoBom = New-Object System.Text.UTF8Encoding $false
         [System.IO.File]::WriteAllText($tempFile.FullName, $wifiProfile, $utf8NoBom)
         
-        Write-SuccessLog "Perfil XML creado en: $($tempFile.FullName)"
-        Write-SuccessLog "DEBUG - Archivo XML guardado con UTF-8 sin BOM"
-        
-        # DIAGNÓSTICO: Guardar copia del perfil para inspección
-        $debugProfilePath = "$logDirectory\wifi-profile-debug.xml"
-        Copy-Item -Path $tempFile.FullName -Destination $debugProfilePath -Force -ErrorAction SilentlyContinue
-        Write-SuccessLog "DEBUG - Copia del perfil guardada en: $debugProfilePath"
+        Write-SuccessLog "Perfil XML Wi-Fi creado con codificación UTF-8 sin BOM"
         
         # Agregar perfil con netsh y capturar resultado
         $netshResult = netsh wlan add profile filename="$($tempFile.FullName)" 2>&1
         Write-SuccessLog "Resultado de netsh add profile: $netshResult"
         
-        if ($netshResult -match "correctamente|successfully|agregado") {
+        if ($netshResult -match "correctamente|successfully|agregado|agregó") {
             Write-Host "  [OK] Perfil Wi-Fi agregado correctamente" -ForegroundColor Green
             Write-SuccessLog "Perfil de red Wi-Fi creado correctamente: $NetworkSSID"
         } else {
@@ -438,45 +424,33 @@ try {
     Write-Host "Conectando a la red: $NetworkSSID" -ForegroundColor Blue
     Write-SuccessLog "Intentando conectar a red Wi-Fi: $NetworkSSID"
     
-    $connectResult = netsh wlan connect name=$NetworkSSID 2>&1
-    Write-SuccessLog "Resultado de netsh connect: $connectResult"
-    
+    netsh wlan connect name=$NetworkSSID | Out-Null
     Start-Sleep -Seconds $Delay 
 
     # Verificar conexión
-    $interfaceInfo = netsh wlan show interfaces 2>&1
-    Write-SuccessLog "Estado de interfaz Wi-Fi: $($interfaceInfo | Out-String)"
-    
-    $newConnection = $interfaceInfo | Select-String -Pattern "SSID" | Select-Object -First 1
+    $newConnection = netsh wlan show interfaces | Select-String -Pattern "SSID" | Select-Object -First 1
     if ($newConnection -match $NetworkSSID) {
         Write-Host "Se ha conectado a la red Wi-Fi: $NetworkSSID" -ForegroundColor Green
         Write-SuccessLog "Conexión Wi-Fi establecida correctamente: $NetworkSSID"
     } else {
         # Intentar reconectar si la primera conexión falla
-        Write-Host "2/2 - Conectando nuevamente a la red: $NetworkSSID" -ForegroundColor Yellow
-        Write-SuccessLog "Intentando reconectar a la red Wi-Fi: $NetworkSSID"
-        Write-ErrorLog "Primera conexión falló. SSID esperado: '$NetworkSSID', Encontrado: '$newConnection'"
+        Write-Host "Reintentando conexión a la red: $NetworkSSID" -ForegroundColor Yellow
+        Write-SuccessLog "Reintentando conexión a la red Wi-Fi: $NetworkSSID"
         
-        $connectResult2 = netsh wlan connect name=$NetworkSSID 2>&1
-        Write-SuccessLog "Segundo intento - Resultado de netsh connect: $connectResult2"
-        
+        netsh wlan connect name=$NetworkSSID | Out-Null
         Start-Sleep -Seconds $Delay
 
         # Verificar conexión nuevamente
-        $interfaceInfo2 = netsh wlan show interfaces 2>&1
-        $newConnection = $interfaceInfo2 | Select-String -Pattern "SSID" | Select-Object -First 1
+        $newConnection = netsh wlan show interfaces | Select-String -Pattern "SSID" | Select-Object -First 1
         
         if ($newConnection -match $NetworkSSID) {
             Write-Host "Se ha conectado correctamente a $NetworkSSID" -ForegroundColor Green
             Write-SuccessLog "Conexión Wi-Fi establecida correctamente: $NetworkSSID"
         } else {
             Write-Host "❌ Error: No se pudo conectar a la red Wi-Fi" -ForegroundColor Red
-            Write-Host "  SSID esperado: $NetworkSSID" -ForegroundColor Gray
-            Write-Host "  Estado actual: $newConnection" -ForegroundColor Gray
-            Write-ErrorLog "Error en conexión Wi-Fi: No se pudo validar la conexión"
-            Write-ErrorLog "SSID esperado: '$NetworkSSID', Estado: '$newConnection'"
-            Write-ErrorLog "Interfaz completa: $($interfaceInfo2 | Out-String)"
-            throw "Ha ocurrido un Error: No se pudo validar la conexion"
+            Write-ErrorLog "Error crítico: No se pudo conectar a la red Wi-Fi '$NetworkSSID'"
+            Write-ErrorLog "Estado esperado: '$NetworkSSID', Estado actual: '$newConnection'"
+            throw "Error: No se pudo validar la conexión Wi-Fi"
         }
     }
 
@@ -578,12 +552,15 @@ $DelaySeconds = 30 # Retardo en segundos para iniciar la tarea programada
 $DelayTask = New-TimeSpan -Seconds $DelaySeconds
 
 # -- Crear tarea programada
-$Action = New-ScheduledTaskAction -Execute "Powershell.exe" -Argument "-NoExit -ExecutionPolicy Bypass -File `"$Script`" *>> `"$successLog`" 2>> `"$errorLog`"" # Ejecutar el siguiente script
-$Trigger = New-ScheduledTaskTrigger -AtLogOn -RandomDelay $DelayTask # Ejectuar al iniciar sesión
-$Settings = New-ScheduledTaskSettingsSet -RunOnlyIfNetworkAvailable -StartWhenAvailable # Ejectuar solo si hay red disponible
-# $Principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest # Configuración de Permisos
-$Principal = New-ScheduledTaskPrincipal -UserId (Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty UserName) -LogonType Interactive -RunLevel Highest # Configuración de Permisos
+# Usar SYSTEM para evitar problemas de permisos y dependencia de sesión de usuario
+$Action = New-ScheduledTaskAction -Execute "Powershell.exe" -Argument "-ExecutionPolicy Bypass -File `"$Script`" *>> `"$successLog`" 2>> `"$errorLog`"" # Ejecutar el siguiente script
+$Trigger = New-ScheduledTaskTrigger -AtStartup # Ejecutar al inicio del sistema (no requiere login)
+$Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Hours 2)
+$Principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest # Ejecutar como SYSTEM
 $Task = New-ScheduledTask -Action $Action -Trigger $Trigger -Settings $Settings -Principal $Principal
+
+Write-Host "Tarea configurada para ejecutarse como SYSTEM al inicio del sistema" -ForegroundColor Cyan
+Write-SuccessLog "Tarea programada: ejecutarse como SYSTEM al inicio (no requiere login de usuario)"
 
 try {
     # Verificar si la tarea ya existe
@@ -605,7 +582,16 @@ try {
     $checkTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue 
     if ($checkTask) {
         Write-Host "La tarea programada '$TaskName' se ha creado correctamente." -ForegroundColor Green
-        Write-SuccessLog "Confirmación: Tarea programada '$TaskName' creada correctamente." 
+        Write-SuccessLog "Confirmación: Tarea programada '$TaskName' creada correctamente."
+        
+        # Registrar detalles de la tarea para debugging
+        $taskInfo = Get-ScheduledTaskInfo -TaskName $TaskName -ErrorAction SilentlyContinue
+        Write-SuccessLog "Detalles tarea: Usuario='SYSTEM', Trigger='AtStartup', Script='$Script'"
+        Write-SuccessLog "Estado tarea: $($checkTask.State), UltimaEjecución: $($taskInfo.LastRunTime), ProximaEjecución: $($taskInfo.NextRunTime)"
+        
+        Write-Host "  → La tarea se ejecutará automáticamente al reiniciar" -ForegroundColor Gray
+        Write-Host "  → Usuario: SYSTEM" -ForegroundColor Gray
+        Write-Host "  → Script: $Script" -ForegroundColor Gray
     } else {
         Write-Error "Error al crear la tarea programada '$TaskName'."
         Write-ErrorLog "Error al crear la tarea programada '$TaskName'." 

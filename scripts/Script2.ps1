@@ -8,6 +8,14 @@
 $tituloPredeterminado = $Host.UI.RawUI.WindowTitle
 $Host.UI.RawUI.WindowTitle = "Configuraciones iniciales - 2/4"
 
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  SCRIPT #2 - UNION AL DOMINIO" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Fecha/Hora de inicio: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor Gray
+Write-Host ""
+
 # ----------------------------------------------------------------
 # # Flujo de ejecución del script # 2
 # 0. Cargar archivo de configuración.
@@ -36,14 +44,22 @@ $ConfigPath = "$PSScriptRoot\..\config.ps1"
 # Validar si el archivo de configuración se cargó correctamente
 # TODO: Migrar funcion al modulo de validación
 if (Test-Path $ConfigPath) {
-    # Importar archivo de configuración
-    . $ConfigPath   
-    Write-Host "Archivo 'config' cargado correctamente." -ForegroundColor Green
+    try {
+        # Importar archivo de configuración
+        . $ConfigPath
+        Write-Host "Archivo 'config' cargado correctamente." -ForegroundColor Green
+    } catch {
+        Write-Host "ERROR al cargar el archivo de configuración:" -ForegroundColor Red
+        Write-Host $_.Exception.Message -ForegroundColor Yellow
+        Start-Sleep -Seconds 30
+        exit 1
+    }
 } else {
     Write-Host "Parece que hubo un error importando las configuraciones." -ForegroundColor DarkRed
     Write-Host "Confirma que el archivo 'config.ps1' exista en la carpeta raíz del script." -ForegroundColor DarkRed
+    Write-Host "Ruta esperada: $ConfigPath" -ForegroundColor Yellow
     # TODO: Crear archivo (config-default.ps1) de configuración predeterminado si no se encuentra
-    Start-Sleep -Seconds $Delay
+    Start-Sleep -Seconds 30
     exit 1
 }
 
@@ -147,6 +163,15 @@ if (-not (Test-Path $successLog)) {
     Write-Host "El archivo de log de éxito ya existe." -ForegroundColor Yellow
     Write-SuccessLog "El archivo de log de éxito ya existe: $successLog"
 }
+
+# Registrar inicio de ejecución del Script2
+Write-SuccessLog "=========================================="
+Write-SuccessLog "INICIANDO SCRIPT #2 - UNION AL DOMINIO"
+Write-SuccessLog "Fecha/Hora: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+Write-SuccessLog "Ejecutado por: $env:USERNAME"
+Write-SuccessLog "Nombre del equipo: $env:COMPUTERNAME"
+Write-SuccessLog "Dominio actual: $((Get-WmiObject -Class Win32_ComputerSystem).Domain)"
+Write-SuccessLog "=========================================="
 
 #! ---------------------------------------------------------------
 
@@ -666,12 +691,15 @@ $DelaySeconds = 30 # Retardo en segundos para iniciar la tarea programada
 $DelayTask = New-TimeSpan -Seconds $DelaySeconds
 
 # -- Crear tarea programada
-$Action = New-ScheduledTaskAction -Execute "Powershell.exe" -Argument "-NoExit -ExecutionPolicy Bypass -File `"$Script`" *>> `"$successLog`" 2>> `"$errorLog`"" # Ejecutar el siguiente script
-$Trigger = New-ScheduledTaskTrigger -AtLogOn -RandomDelay $DelayTask # Ejectuar al iniciar sesión
-$Settings = New-ScheduledTaskSettingsSet -RunOnlyIfNetworkAvailable -StartWhenAvailable # Ejectuar solo si hay red disponible
-# $Principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest # Configuración de Permisos
-$Principal = New-ScheduledTaskPrincipal -UserId (Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty UserName) -LogonType Interactive -RunLevel Highest # Configuración de Permisos
+# Usar SYSTEM para evitar problemas de permisos y dependencia de sesión de usuario
+$Action = New-ScheduledTaskAction -Execute "Powershell.exe" -Argument "-ExecutionPolicy Bypass -File `"$Script`" *>> `"$successLog`" 2>> `"$errorLog`"" # Ejecutar el siguiente script
+$Trigger = New-ScheduledTaskTrigger -AtStartup # Ejecutar al inicio del sistema (no requiere login)
+$Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Hours 2)
+$Principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest # Ejecutar como SYSTEM
 $Task = New-ScheduledTask -Action $Action -Trigger $Trigger -Settings $Settings -Principal $Principal
+
+Write-Host "Tarea configurada para ejecutarse como SYSTEM al inicio del sistema" -ForegroundColor Cyan
+Write-SuccessLog "Tarea programada: ejecutarse como SYSTEM al inicio (no requiere login de usuario)"
 
 try {
     # Verificar si la tarea ya existe
@@ -693,7 +721,16 @@ try {
     $checkTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue 
     if ($checkTask) {
         Write-Host "La tarea programada '$TaskName' se ha creado correctamente." -ForegroundColor Green
-        Write-SuccessLog "Confirmación: Tarea programada '$TaskName' creada correctamente." 
+        Write-SuccessLog "Confirmación: Tarea programada '$TaskName' creada correctamente."
+        
+        # Registrar detalles de la tarea para debugging
+        $taskInfo = Get-ScheduledTaskInfo -TaskName $TaskName -ErrorAction SilentlyContinue
+        Write-SuccessLog "Detalles tarea: Usuario='SYSTEM', Trigger='AtStartup', Script='$Script'"
+        Write-SuccessLog "Estado tarea: $($checkTask.State), UltimaEjecución: $($taskInfo.LastRunTime), ProximaEjecución: $($taskInfo.NextRunTime)"
+        
+        Write-Host "  → La tarea se ejecutará automáticamente al reiniciar" -ForegroundColor Gray
+        Write-Host "  → Usuario: SYSTEM" -ForegroundColor Gray
+        Write-Host "  → Script: $Script" -ForegroundColor Gray
     } else {
         Write-Error "Error al crear la tarea programada '$TaskName'."
         Write-ErrorLog "Error al crear la tarea programada '$TaskName'." 

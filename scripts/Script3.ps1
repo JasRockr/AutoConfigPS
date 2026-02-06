@@ -8,6 +8,14 @@
 $tituloPredeterminado = $Host.UI.RawUI.WindowTitle
 $Host.UI.RawUI.WindowTitle = "Configuraciones iniciales - 3/4"
 
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  SCRIPT #3 - INSTALACION DE APLICACIONES" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Fecha/Hora de inicio: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor Gray
+Write-Host ""
+
 # ----------------------------------------------------------------
 # Flujo de ejecución del script # 3
 # 0. Cargar archivo de configuración.
@@ -36,14 +44,22 @@ $ConfigPath = "$PSScriptRoot\..\config.ps1"
 # Validar si el archivo de configuración se cargó correctamente
 # TODO: Migrar funcion al modulo de validación
 if (Test-Path $ConfigPath) {
-    # Importar archivo de configuración
-    . $ConfigPath   
-    Write-Host "Archivo 'config' cargado correctamente." -ForegroundColor Green
+    try {
+        # Importar archivo de configuración
+        . $ConfigPath
+        Write-Host "Archivo 'config' cargado correctamente." -ForegroundColor Green
+    } catch {
+        Write-Host "ERROR al cargar el archivo de configuración:" -ForegroundColor Red
+        Write-Host $_.Exception.Message -ForegroundColor Yellow
+        Start-Sleep -Seconds 30
+        exit 1
+    }
 } else {
     Write-Host "Parece que hubo un error importando las configuraciones." -ForegroundColor DarkRed
     Write-Host "Confirma que el archivo 'config.ps1' exista en la carpeta raíz del script." -ForegroundColor DarkRed
+    Write-Host "Ruta esperada: $ConfigPath" -ForegroundColor Yellow
     # TODO: Crear archivo (config-default.ps1) de configuración predeterminado si no se encuentra
-    Start-Sleep -Seconds $Delay
+    Start-Sleep -Seconds 30
     exit 1
 }
 # --
@@ -148,6 +164,15 @@ if (-not (Test-Path $successLog)) {
     Write-Host "El archivo de log de éxito ya existe." -ForegroundColor Yellow
     Write-SuccessLog "El archivo de log de éxito ya existe: $successLog"
 }
+
+# Registrar inicio de ejecución del Script3
+Write-SuccessLog "=========================================="
+Write-SuccessLog "INICIANDO SCRIPT #3 - INSTALACION DE APLICACIONES"
+Write-SuccessLog "Fecha/Hora: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+Write-SuccessLog "Ejecutado por: $env:USERNAME"
+Write-SuccessLog "Nombre del equipo: $env:COMPUTERNAME"
+Write-SuccessLog "Dominio actual: $((Get-WmiObject -Class Win32_ComputerSystem).Domain)"
+Write-SuccessLog "=========================================="
 
 #! ---------------------------------------------------------------
 
