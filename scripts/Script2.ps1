@@ -87,17 +87,32 @@ foreach ($location in $ConfigLocations) {
 # Validar si el archivo de configuración se encontró
 if ($ConfigPath -and (Test-Path $ConfigPath)) {
     try {
+        # CRÍTICO: Cambiar el directorio de trabajo a la carpeta del proyecto
+        # Esto asegura que las rutas relativas en config.ps1 funcionen correctamente
+        $OriginalLocation = Get-Location
+        Set-Location -Path $ProjectRoot
+        
+        try {
+            Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [DEBUG] Directorio de trabajo cambiado a: $ProjectRoot" -ErrorAction SilentlyContinue
+        } catch {}
+        
         # Importar archivo de configuración
         . $ConfigPath
         Write-Host "Archivo 'config' cargado correctamente desde: $ConfigPath" -ForegroundColor Green
         try {
             Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [DEBUG] Config.ps1 cargado exitosamente desde: $ConfigPath" -ErrorAction SilentlyContinue
         } catch {}
+        
+        # Restaurar ubicación original (opcional)
+        # Set-Location -Path $OriginalLocation
+        
     } catch {
         Write-Host "ERROR al cargar el archivo de configuración:" -ForegroundColor Red
         Write-Host $_.Exception.Message -ForegroundColor Yellow
+        Write-Host "Detalles completos: $($_.Exception | Format-List * -Force | Out-String)" -ForegroundColor Gray
         try {
             Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [ERROR] Fallo al cargar config.ps1: $($_.Exception.Message)" -ErrorAction SilentlyContinue
+            Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [ERROR] Detalles: $($_.Exception | Out-String)" -ErrorAction SilentlyContinue
         } catch {}
         Start-Sleep -Seconds 30
         exit 1
