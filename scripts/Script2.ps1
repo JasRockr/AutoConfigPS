@@ -52,21 +52,46 @@ Write-Host ""
 # 0. Cargar archivo de configuración
 # ----------------------------------------------------------------
 Write-Host "Cargando archivo de config..." -ForegroundColor Cyan
+
+# Determinar la ruta base del proyecto de forma robusta
+# Cuando se ejecuta desde tarea programada, $PSScriptRoot puede fallar
+$ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+$ProjectRoot = Split-Path -Parent $ScriptDir
+
+# Buscar config.ps1 en múltiples ubicaciones posibles
+$ConfigLocations = @(
+    "$ProjectRoot\config.ps1",                                    # Ubicación estándar
+    "$ScriptDir\..\config.ps1",                                   # Relativa desde scripts
+    "C:\Users\Usuario\Downloads\AutoConfigPS\config.ps1"         # Ruta absoluta conocida
+)
+
 try {
-    Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [DEBUG] Intentando cargar config desde: $PSScriptRoot\..\config.ps1" -ErrorAction SilentlyContinue
+    Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [DEBUG] ScriptDir: $ScriptDir, ProjectRoot: $ProjectRoot" -ErrorAction SilentlyContinue
 } catch {}
 
-$ConfigPath = "$PSScriptRoot\..\config.ps1"
+$ConfigPath = $null
+foreach ($location in $ConfigLocations) {
+    try {
+        Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [DEBUG] Buscando config en: $location" -ErrorAction SilentlyContinue
+    } catch {}
+    
+    if (Test-Path $location) {
+        $ConfigPath = $location
+        try {
+            Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [DEBUG] Config encontrado en: $location" -ErrorAction SilentlyContinue
+        } catch {}
+        break
+    }
+}
 
-# Validar si el archivo de configuración se cargó correctamente
-# TODO: Migrar funcion al modulo de validación
-if (Test-Path $ConfigPath) {
+# Validar si el archivo de configuración se encontró
+if ($ConfigPath -and (Test-Path $ConfigPath)) {
     try {
         # Importar archivo de configuración
         . $ConfigPath
-        Write-Host "Archivo 'config' cargado correctamente." -ForegroundColor Green
+        Write-Host "Archivo 'config' cargado correctamente desde: $ConfigPath" -ForegroundColor Green
         try {
-            Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [DEBUG] Config.ps1 cargado exitosamente" -ErrorAction SilentlyContinue
+            Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [DEBUG] Config.ps1 cargado exitosamente desde: $ConfigPath" -ErrorAction SilentlyContinue
         } catch {}
     } catch {
         Write-Host "ERROR al cargar el archivo de configuración:" -ForegroundColor Red
@@ -79,12 +104,15 @@ if (Test-Path $ConfigPath) {
     }
 } else {
     Write-Host "Parece que hubo un error importando las configuraciones." -ForegroundColor DarkRed
-    Write-Host "Confirma que el archivo 'config.ps1' exista en la carpeta raíz del script." -ForegroundColor DarkRed
-    Write-Host "Ruta esperada: $ConfigPath" -ForegroundColor Yellow
+    Write-Host "Confirma que el archivo 'config.ps1' exista en la carpeta raíz del proyecto." -ForegroundColor DarkRed
+    Write-Host "Ubicaciones buscadas:" -ForegroundColor Yellow
+    foreach ($loc in $ConfigLocations) {
+        Write-Host "  - $loc" -ForegroundColor Gray
+    }
     try {
-        Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [ERROR] Config.ps1 NO existe en: $ConfigPath" -ErrorAction SilentlyContinue
+        Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [ERROR] Config.ps1 NO encontrado en ninguna ubicación" -ErrorAction SilentlyContinue
+        Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [ERROR] Ubicaciones buscadas: $($ConfigLocations -join ', ')" -ErrorAction SilentlyContinue
     } catch {}
-    # TODO: Crear archivo (config-default.ps1) de configuración predeterminado si no se encuentra
     Start-Sleep -Seconds 30
     exit 1
 }
