@@ -575,6 +575,30 @@ try {
 
 $Credential = New-Object System.Management.Automation.PSCredential ($Useradmin, $DomainSecurePass)
 
+# VALIDACIÓN: Verificar que la contraseña descifrada sea correcta
+try {
+    $BSTR_Test = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Credential.Password)
+    $PlainTest = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR_Test)
+    [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR_Test)
+    
+    $passLength = $PlainTest.Length
+    $passPreview = if ($passLength -gt 0) { "$($PlainTest.Substring(0, [Math]::Min(3, $passLength)))***" } else { "<VACÍA>" }
+    
+    try {
+        Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [DEBUG] Contraseña descifrada - Longitud: $passLength, Vista previa: $passPreview" -ErrorAction SilentlyContinue
+    } catch {}
+    
+    if ($passLength -eq 0) {
+        Write-ErrorLog "[CRITICAL] La contraseña descifrada está vacía"
+        throw "Error: La contraseña descifrada está vacía"
+    }
+} catch {
+    Write-ErrorLog "[ERROR] No se pudo validar la contraseña descifrada: $($_.Exception.Message)"
+    try {
+        Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [ERROR] Error al validar contraseña: $($_.Exception.Message)" -ErrorAction SilentlyContinue
+    } catch {}
+}
+
 # Ruta de la clave del registro para el inicio de sesión automático
 $AutoLoginKey = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
 
