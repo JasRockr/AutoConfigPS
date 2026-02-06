@@ -3,6 +3,19 @@
 # Script Inicial P2
 # Parte2: Unir equipo al dominio y preparar sistema para el reinicio.
 
+# LOGGING INMEDIATO - Confirmar que el script se está ejecutando
+# ----------------------------------------------------------------
+$earlyLogPath = "C:\Logs\setup_success.log"
+$earlyTimestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+try {
+    if (Test-Path "C:\Logs") {
+        Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [INICIO] *** SCRIPT #2 INICIADO POR TAREA PROGRAMADA ***" -ErrorAction SilentlyContinue
+        Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [INICIO] Usuario ejecutando: $env:USERNAME, Dominio: $env:USERDOMAIN" -ErrorAction SilentlyContinue
+    }
+} catch {
+    # Si falla el logging, continuar de todos modos
+}
+
 # Configurar titulo de ventana
 # ----------------------------------------------------------------
 $tituloPredeterminado = $Host.UI.RawUI.WindowTitle
@@ -694,21 +707,23 @@ $DelayTask = New-TimeSpan -Seconds $DelaySeconds
 # Usar SYSTEM para evitar problemas de permisos y dependencia de sesión de usuario
 $Action = New-ScheduledTaskAction -Execute "Powershell.exe" -Argument "-ExecutionPolicy Bypass -File `"$Script`" *>> `"$successLog`" 2>> `"$errorLog`"" # Ejecutar el siguiente script
 
-# TRIGGER PRINCIPAL: AtStartup (se ejecuta al reiniciar)
+# TRIGGER PRINCIPAL: AtStartup con delay de 60 segundos
 $TriggerStartup = New-ScheduledTaskTrigger -AtStartup
+$TriggerStartup.Delay = "PT1M" # Delay de 1 minuto en formato ISO 8601
 
-# TRIGGER RESPALDO: OneTime en 2 minutos (garantiza ejecución inmediata si AtStartup falla)
-$TriggerBackup = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(2)
+# TRIGGER RESPALDO: AtLogon para cuenta SYSTEM (se ejecuta cuando servicios inician)
+$TriggerLogon = New-ScheduledTaskTrigger -AtLogOn -User "SYSTEM"
+$TriggerLogon.Delay = "PT30S" # Delay de 30 segundos
 
 # Combinar ambos triggers
-$Triggers = @($TriggerStartup, $TriggerBackup)
+$Triggers = @($TriggerStartup, $TriggerLogon)
 
-$Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Hours 2)
+$Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Hours 2) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
 $Principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest # Ejecutar como SYSTEM
 $Task = New-ScheduledTask -Action $Action -Trigger $Triggers -Settings $Settings -Principal $Principal
 
-Write-Host "Tarea configurada con 2 triggers: AtStartup + Respaldo en 2min" -ForegroundColor Cyan
-Write-SuccessLog "Tarea programada: Trigger1=AtStartup, Trigger2=OneTime(+2min) como SYSTEM"
+Write-Host "Tarea configurada con 2 triggers: AtStartup(+60s) + AtLogon(+30s)" -ForegroundColor Cyan
+Write-SuccessLog "Tarea programada: Trigger1=AtStartup(delay:60s), Trigger2=AtLogon(delay:30s), Reintentos=3 como SYSTEM"
 
 try {
     # Verificar si la tarea ya existe
@@ -738,8 +753,8 @@ try {
         # Registrar detalles de la tarea para debugging
         $taskInfo = Get-ScheduledTaskInfo -TaskName $TaskName -ErrorAction SilentlyContinue
         $triggerCount = ($checkTask.Triggers | Measure-Object).Count
-        Write-SuccessLog "Detalles tarea: Usuario='SYSTEM', Triggers=$triggerCount (AtStartup + OneTime), Script='$Script'"
-        Write-SuccessLog "Estado tarea: $($checkTask.State), Habilitada: $($checkTask.Settings.Enabled), UltimaEjecución: $($taskInfo.LastRunTime), ProximaEjecución: $($taskInfo.NextRunTime)"
+        Write-SuccessLog "Detalles tarea: Usuario='SYSTEM', Triggers=$triggerCount (AtStartup+60s + AtLogon+30s), Script='$Script'"
+        Write-SuccessLog "Estado tarea: $($checkTask.State), Habilitada: $($checkTask.Settings.Enabled), Reintentos: $($checkTask.Settings.RestartCount), UltimaEjecución: $($taskInfo.LastRunTime)"
         
         # CRÍTICO: Si NextRunTime está vacío, forzar inicio de la tarea como respaldo
         if (-not $taskInfo.NextRunTime -or $taskInfo.NextRunTime -eq $null) {
