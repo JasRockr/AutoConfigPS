@@ -11,13 +11,16 @@
 
 .NOTES
     Autor: Json Rivera (JasRockr!)
-    Version: 1.0.0
-    Fecha: 2026-01-28
+    Version: 1.0.1
+    Fecha: 2026-02-06
 
     IMPORTANTE:
     - Debe ejecutarse con privilegios de administrador
     - Las credenciales solo seran validas en este equipo con este usuario
     - Para uso en multiples equipos, ejecutar este script en cada uno
+    
+    CHANGELOG v1.0.1:
+    - Agregada configuracion automatica de ExecutionPolicy
 
 .EXAMPLE
     .\Setup-Credentials.ps1
@@ -27,7 +30,42 @@
 param()
 
 # ====================================
-# CONFIGURACIoN
+# CONFIGURAR EXECUTION POLICY
+# ====================================
+
+Write-Host ""
+Write-Host "Verificando politica de ejecucion de scripts..." -ForegroundColor Cyan
+
+try {
+    $currentPolicy = Get-ExecutionPolicy -Scope CurrentUser
+    
+    if ($currentPolicy -ne "Bypass" -and $currentPolicy -ne "Unrestricted") {
+        Write-Host "  Politica actual: $currentPolicy" -ForegroundColor Yellow
+        Write-Host "  Configurando ExecutionPolicy a Bypass para usuario actual..." -ForegroundColor Yellow
+        
+        Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope CurrentUser -Force -ErrorAction Stop
+        
+        $newPolicy = Get-ExecutionPolicy -Scope CurrentUser
+        Write-Host "  [OK] ExecutionPolicy configurada: $newPolicy" -ForegroundColor Green
+        Write-Host "  Los scripts se ejecutaran sin restricciones para este usuario" -ForegroundColor Gray
+    } else {
+        Write-Host "  [OK] ExecutionPolicy ya permite ejecucion: $currentPolicy" -ForegroundColor Green
+    }
+} catch {
+    Write-Host "  [!] No se pudo configurar ExecutionPolicy automaticamente" -ForegroundColor Yellow
+    Write-Host "  Error: $($_.Exception.Message)" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "  Configura manualmente con:" -ForegroundColor Yellow
+    Write-Host "  Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope CurrentUser" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "Presiona Enter para continuar..." -ForegroundColor Yellow
+    Read-Host
+}
+
+Write-Host ""
+
+# ====================================
+# CONFIGURACION
 # ====================================
 
 $ScriptVersion = "1.0.0"
