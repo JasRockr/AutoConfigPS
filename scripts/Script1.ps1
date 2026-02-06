@@ -656,12 +656,12 @@ try {
 # Verificar si el reinicio automático está habilitado en la configuración
 if (-not (Get-Variable -Name 'AutoRestart' -ErrorAction SilentlyContinue)) {
     # Variable no definida en config, preguntar al usuario
-    $confirmation = Read-Host "¿Estás seguro de que deseas reiniciar el equipo? (S/N)" -ForegroundColor Cyan
+    $confirmation = Read-Host "¿Estás seguro de que deseas reiniciar el equipo? (S/N)"
     # Validar entrada del usuario
     while ($confirmation -ne 'S' -and $confirmation -ne 'N') {
         Write-Host "Opción no válida. Por favor, introduce 'S' para Sí o 'N' para No." -ForegroundColor Yellow
         Write-ErrorLog "Registro de opción no válida: $confirmation"
-        $confirmation = Read-Host "¿Estás seguro de que deseas reiniciar el equipo? (S/N)" -ForegroundColor Cyan
+        $confirmation = Read-Host "¿Estás seguro de que deseas reiniciar el equipo? (S/N)"
     }
 } else {
     # Usar la configuración predefinida
@@ -681,7 +681,7 @@ if ($confirmation -eq 'S') {
         Write-Host "¡ADVERTENCIA! La tarea programada '$TaskName' no se encuentra." -ForegroundColor Red
         Write-ErrorLog "Advertencia pre-reinicio: Tarea programada '$TaskName' no encontrada"
         
-        $forceRestart = Read-Host "¿Deseas continuar con el reinicio de todas formas? (S/N)" -ForegroundColor Cyan
+        $forceRestart = Read-Host "¿Deseas continuar con el reinicio de todas formas? (S/N)"
         if ($forceRestart -ne 'S') {
             Write-Host "Reinicio cancelado." -ForegroundColor Yellow
             Write-ErrorLog "Reinicio cancelado - Tarea programada no encontrada"

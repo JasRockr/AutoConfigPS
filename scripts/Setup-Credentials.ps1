@@ -71,6 +71,9 @@ Write-Host ""
 $ScriptVersion = "1.0.0"
 $SecureConfigPath = "$PSScriptRoot\..\SecureConfig"
 
+# Importar módulo de gestión segura de credenciales
+. "$PSScriptRoot\SecureCredentialManager.ps1"
+
 # ====================================
 # FUNCIONES AUXILIARES
 # ====================================
@@ -164,6 +167,21 @@ try {
     Write-ColoredMessage "Advertencia: No se pudieron establecer permisos restrictivos" -Type Warning
 }
 
+# Generar clave AES compartida (compatible con SYSTEM)
+$keyPath = "$SecureConfigPath\.aeskey"
+if (-not (Test-Path $keyPath)) {
+    Write-Host ""
+    Write-ColoredMessage "Generando clave de cifrado compartida..." -Type Info
+    $aesKey = New-SecureKey
+    [System.IO.File]::WriteAllBytes($keyPath, $aesKey)
+    Protect-CredentialFiles -Path $keyPath | Out-Null
+    Write-ColoredMessage "Clave de cifrado creada" -Type Success
+} else {
+    Write-Host ""
+    Write-ColoredMessage "Usando clave de cifrado existente" -Type Info
+    $aesKey = [System.IO.File]::ReadAllBytes($keyPath)
+}
+
 Write-Host ""
 
 # ====================================
@@ -176,7 +194,7 @@ Write-Host "Ingresa las credenciales del usuario con permisos para unir equipos 
 Write-Host "Formato del usuario: DOMINIO\usuario o usuario@dominio.local" -ForegroundColor Gray
 Write-Host ""
 
-$domainCredPath = "$SecureConfigPath\cred_domain.xml"
+$domainCredPath = "$SecureConfigPath\cred_domain.json"
 $domainCredValid = $false
 
 while (-not $domainCredValid) {
@@ -184,16 +202,17 @@ while (-not $domainCredValid) {
         $domainCred = Get-Credential -Message "Credenciales de Administrador de Dominio"
 
         if (Test-CredentialValid -Credential $domainCred) {
-            # Guardar credenciales cifradas
-            $domainCred | Export-Clixml -Path $domainCredPath -Force
+            # Guardar credenciales cifradas con AES (compatible con SYSTEM)
+            Export-SecureCredential -Credential $domainCred -Path $domainCredPath -Key $aesKey
+            Protect-CredentialFiles -Path $domainCredPath | Out-Null
 
-            # Verificar que se guardo correctamente
+            # Verificar que se guard\u00f3 correctamente
             if (Test-Path $domainCredPath) {
                 # Intentar leer para validar
-                $testCred = Import-Clixml -Path $domainCredPath
+                $testCred = Import-SecureCredential -Path $domainCredPath -Key $aesKey
                 if (Test-CredentialValid -Credential $testCred) {
                     Write-ColoredMessage "Credenciales de dominio guardadas correctamente" -Type Success
-                    Write-Host "Ubicacion: $domainCredPath" -ForegroundColor Gray
+                    Write-Host "Ubicaci\u00f3n: $domainCredPath" -ForegroundColor Gray
                     $domainCredValid = $true
                 } else {
                     throw "Error al validar credenciales guardadas"
@@ -231,17 +250,18 @@ Write-Host "Si deseas configurar autologin temporal con usuario local," -Foregro
 Write-Host "ingresa las credenciales. De lo contrario, presiona Cancelar." -ForegroundColor Gray
 Write-Host ""
 
-$localCredPath = "$SecureConfigPath\cred_local.xml"
+$localCredPath = "$SecureConfigPath\cred_local.json"
 
 try {
     $localCred = Get-Credential -Message "Credenciales de Usuario Local (Opcional - Cancelar para omitir)"
 
     if (Test-CredentialValid -Credential $localCred) {
-        $localCred | Export-Clixml -Path $localCredPath -Force
+        Export-SecureCredential -Credential $localCred -Path $localCredPath -Key $aesKey
+        Protect-CredentialFiles -Path $localCredPath | Out-Null
 
         if (Test-Path $localCredPath) {
             Write-ColoredMessage "Credenciales de usuario local guardadas correctamente" -Type Success
-            Write-Host "Ubicacion: $localCredPath" -ForegroundColor Gray
+            Write-Host "Ubicación: $localCredPath" -ForegroundColor Gray
         }
     } else {
         Write-ColoredMessage "Credenciales de usuario local omitidas" -Type Info
@@ -262,20 +282,21 @@ Write-Host "Ingresa la contrasena de la red Wi-Fi corporativa." -ForegroundColor
 Write-Host "El SSID se configurara en config.ps1" -ForegroundColor Gray
 Write-Host ""
 
-$wifiCredPath = "$SecureConfigPath\cred_wifi.xml"
+$wifiCredPath = "$SecureConfigPath\cred_wifi.json"
 $wifiCredValid = $false
 
 while (-not $wifiCredValid) {
     try {
-        $wifiCred = Get-Credential -UserName "WiFi-Password" -Message "Contrasena de Red Wi-Fi (usar campo de contrasena)"
+        $wifiCred = Get-Credential -UserName "WiFi-Password" -Message "Contraseña de Red Wi-Fi (usar campo de contraseña)"
 
         if ($wifiCred -and $wifiCred.Password.Length -gt 0) {
-            # Guardar solo la contrasena cifrada
-            $wifiCred | Export-Clixml -Path $wifiCredPath -Force
+            # Guardar contraseña cifrada con AES
+            Export-SecureCredential -Credential $wifiCred -Path $wifiCredPath -Key $aesKey
+            Protect-CredentialFiles -Path $wifiCredPath | Out-Null
 
             if (Test-Path $wifiCredPath) {
-                Write-ColoredMessage "Contrasena de Wi-Fi guardada correctamente" -Type Success
-                Write-Host "Ubicacion: $wifiCredPath" -ForegroundColor Gray
+                Write-ColoredMessage "Contraseña de Wi-Fi guardada correctamente" -Type Success
+                Write-Host "Ubicación: $wifiCredPath" -ForegroundColor Gray
                 $wifiCredValid = $true
             }
         } else {
