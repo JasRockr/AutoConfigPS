@@ -663,11 +663,11 @@ if (-not $apps -or $apps.Count -eq 0) {
     if ($successCount -gt 0) {
         Write-Host "Aplicaciones instaladas correctamente:" -ForegroundColor Green
         $installResults | Where-Object { $_.Success } | ForEach-Object {
-            $durationSeconds = '{0:N1}' -f $_.Duration.TotalSeconds
-            Write-Host "  [OK] $($_.AppName) - $($_.Message) ($durationSeconds" + 's)' -ForegroundColor Green
+            $durationSeconds = ('{0:N1}' -f $_.Duration.TotalSeconds) + 's'
+            Write-Host "  [OK] $($_.AppName) - $($_.Message) ($durationSeconds)" -ForegroundColor Green
         }
         Write-Host ""
-    }
+    }   
 
     # Listar aplicaciones fallidas
     if ($failCount -gt 0) {
