@@ -554,13 +554,22 @@ $DelayTask = New-TimeSpan -Seconds $DelaySeconds
 # -- Crear tarea programada
 # Usar SYSTEM para evitar problemas de permisos y dependencia de sesión de usuario
 $Action = New-ScheduledTaskAction -Execute "Powershell.exe" -Argument "-ExecutionPolicy Bypass -File `"$Script`" *>> `"$successLog`" 2>> `"$errorLog`"" # Ejecutar el siguiente script
-$Trigger = New-ScheduledTaskTrigger -AtStartup # Ejecutar al inicio del sistema (no requiere login)
+
+# TRIGGER PRINCIPAL: AtStartup (se ejecuta al reiniciar)
+$TriggerStartup = New-ScheduledTaskTrigger -AtStartup
+
+# TRIGGER RESPALDO: OneTime en 2 minutos (garantiza ejecución inmediata si AtStartup falla)
+$TriggerBackup = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(2)
+
+# Combinar ambos triggers
+$Triggers = @($TriggerStartup, $TriggerBackup)
+
 $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Hours 2)
 $Principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest # Ejecutar como SYSTEM
-$Task = New-ScheduledTask -Action $Action -Trigger $Trigger -Settings $Settings -Principal $Principal
+$Task = New-ScheduledTask -Action $Action -Trigger $Triggers -Settings $Settings -Principal $Principal
 
-Write-Host "Tarea configurada para ejecutarse como SYSTEM al inicio del sistema" -ForegroundColor Cyan
-Write-SuccessLog "Tarea programada: ejecutarse como SYSTEM al inicio (no requiere login de usuario)"
+Write-Host "Tarea configurada con 2 triggers: AtStartup + Respaldo en 2min" -ForegroundColor Cyan
+Write-SuccessLog "Tarea programada: Trigger1=AtStartup, Trigger2=OneTime(+2min) como SYSTEM"
 
 try {
     # Verificar si la tarea ya existe
@@ -572,11 +581,14 @@ try {
         Write-Host "Tarea '$TaskName' eliminada correctamente." -ForegroundColor Green
         Write-SuccessLog "Tarea programada eliminada correctamente: $TaskName" 
     }
-    # Crear la tarea programada
-    Register-ScheduledTask -TaskName $TaskName -InputObject $Task -Force
+    # Crear la tarea programada (forzar habilitación)
+    Register-ScheduledTask -TaskName $TaskName -InputObject $Task -Force | Out-Null
+    
+    # CRÍTICO: Habilitar explícitamente la tarea
+    Enable-ScheduledTask -TaskName $TaskName | Out-Null
+    
     Write-Host "Se ha creado la tarea '$TaskName' para ejecutarse al inicio."
     Write-SuccessLog "Tarea programada creada correctamente: $TaskName" 
-    # Start-Sleep -Seconds $Delay
 
     #! Verificar si la tarea se creó correctamente
     $checkTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue 
@@ -586,8 +598,23 @@ try {
         
         # Registrar detalles de la tarea para debugging
         $taskInfo = Get-ScheduledTaskInfo -TaskName $TaskName -ErrorAction SilentlyContinue
-        Write-SuccessLog "Detalles tarea: Usuario='SYSTEM', Trigger='AtStartup', Script='$Script'"
-        Write-SuccessLog "Estado tarea: $($checkTask.State), UltimaEjecución: $($taskInfo.LastRunTime), ProximaEjecución: $($taskInfo.NextRunTime)"
+        $triggerCount = ($checkTask.Triggers | Measure-Object).Count
+        Write-SuccessLog "Detalles tarea: Usuario='SYSTEM', Triggers=$triggerCount (AtStartup + OneTime), Script='$Script'"
+        Write-SuccessLog "Estado tarea: $($checkTask.State), Habilitada: $($checkTask.Settings.Enabled), UltimaEjecución: $($taskInfo.LastRunTime), ProximaEjecución: $($taskInfo.NextRunTime)"
+        
+        # CRÍTICO: Si NextRunTime está vacío, forzar inicio de la tarea como respaldo
+        if (-not $taskInfo.NextRunTime -or $taskInfo.NextRunTime -eq $null) {
+            Write-Host "  ⚠ Próxima ejecución no programada. Forzando inicio de tarea como respaldo..." -ForegroundColor Yellow
+            Write-SuccessLog "ADVERTENCIA: NextRunTime vacío. Iniciando tarea manualmente como respaldo."
+            
+            # Iniciar la tarea ahora (se ejecutará en segundo plano)
+            Start-ScheduledTask -TaskName $TaskName
+            Start-Sleep -Seconds 2
+            
+            # Verificar si se inició
+            $taskInfoAfter = Get-ScheduledTaskInfo -TaskName $TaskName -ErrorAction SilentlyContinue
+            Write-SuccessLog "Estado después de inicio forzado: UltimaEjecución: $($taskInfoAfter.LastRunTime), ProximaEjecución: $($taskInfoAfter.NextRunTime)"
+        }
         
         Write-Host "  → La tarea se ejecutará automáticamente al reiniciar" -ForegroundColor Gray
         Write-Host "  → Usuario: SYSTEM" -ForegroundColor Gray
