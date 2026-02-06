@@ -571,7 +571,24 @@ if (Get-Variable -Name 'SecurePassadmin' -ErrorAction SilentlyContinue) {
 
 try {
     Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [DEBUG] Creando PSCredential con usuario: $Useradmin" -ErrorAction SilentlyContinue
+    Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [DEBUG] Formato username completo: '$Useradmin' (contiene '\': $($Useradmin.Contains('\')))" -ErrorAction SilentlyContinue
 } catch {}
+
+# VALIDACIÓN: El usuario debe incluir el dominio para Add-Computer
+if (-not ($Useradmin.Contains('\') -or $Useradmin.Contains('@'))) {
+    Write-Host "⚠ ADVERTENCIA: El usuario no incluye dominio. Agregando dominio automáticamente..." -ForegroundColor Yellow
+    Write-ErrorLog "ADVERTENCIA: Usuario sin dominio detectado: $Useradmin"
+    
+    # Agregar dominio automáticamente
+    $Useradmin = "$DomainName\$Useradmin"
+    
+    Write-Host "  Usuario corregido: $Useradmin" -ForegroundColor Cyan
+    Write-SuccessLog "Usuario corregido automáticamente a: $Useradmin"
+    
+    try {
+        Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [DEBUG] Usuario corregido a: $Useradmin" -ErrorAction SilentlyContinue
+    } catch {}
+}
 
 $Credential = New-Object System.Management.Automation.PSCredential ($Useradmin, $DomainSecurePass)
 
