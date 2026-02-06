@@ -52,6 +52,10 @@ Write-Host ""
 # 0. Cargar archivo de configuración
 # ----------------------------------------------------------------
 Write-Host "Cargando archivo de config..." -ForegroundColor Cyan
+try {
+    Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [DEBUG] Intentando cargar config desde: $PSScriptRoot\..\config.ps1" -ErrorAction SilentlyContinue
+} catch {}
+
 $ConfigPath = "$PSScriptRoot\..\config.ps1"
 
 # Validar si el archivo de configuración se cargó correctamente
@@ -61,9 +65,15 @@ if (Test-Path $ConfigPath) {
         # Importar archivo de configuración
         . $ConfigPath
         Write-Host "Archivo 'config' cargado correctamente." -ForegroundColor Green
+        try {
+            Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [DEBUG] Config.ps1 cargado exitosamente" -ErrorAction SilentlyContinue
+        } catch {}
     } catch {
         Write-Host "ERROR al cargar el archivo de configuración:" -ForegroundColor Red
         Write-Host $_.Exception.Message -ForegroundColor Yellow
+        try {
+            Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [ERROR] Fallo al cargar config.ps1: $($_.Exception.Message)" -ErrorAction SilentlyContinue
+        } catch {}
         Start-Sleep -Seconds 30
         exit 1
     }
@@ -71,6 +81,9 @@ if (Test-Path $ConfigPath) {
     Write-Host "Parece que hubo un error importando las configuraciones." -ForegroundColor DarkRed
     Write-Host "Confirma que el archivo 'config.ps1' exista en la carpeta raíz del script." -ForegroundColor DarkRed
     Write-Host "Ruta esperada: $ConfigPath" -ForegroundColor Yellow
+    try {
+        Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [ERROR] Config.ps1 NO existe en: $ConfigPath" -ErrorAction SilentlyContinue
+    } catch {}
     # TODO: Crear archivo (config-default.ps1) de configuración predeterminado si no se encuentra
     Start-Sleep -Seconds 30
     exit 1
@@ -484,21 +497,38 @@ function Test-ComputerNameInAD {
 # 1. Configurar actualización de inicio de sesión automático (usuario de dominio por defecto 'administrador')
 # ----------------------------------------------------------------
 
+try {
+    Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [DEBUG] Iniciando carga de credenciales de dominio" -ErrorAction SilentlyContinue
+} catch {}
+
 # Soporte para credenciales cifradas y texto plano
 if (Get-Variable -Name 'SecurePassadmin' -ErrorAction SilentlyContinue) {
     # Ya se proporcionó SecureString (credenciales cifradas)
     Write-Host "Usando credenciales de dominio cifradas" -ForegroundColor Green
     Write-SuccessLog "Credenciales de dominio: usando formato cifrado"
     $DomainSecurePass = $SecurePassadmin
+    try {
+        Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [DEBUG] SecurePassadmin encontrado (credenciales cifradas)" -ErrorAction SilentlyContinue
+    } catch {}
 } elseif (Get-Variable -Name 'Passadmin' -ErrorAction SilentlyContinue) {
     # Texto plano proporcionado (método legacy)
     Write-Host "ADVERTENCIA: Usando contraseña de dominio en texto plano" -ForegroundColor Yellow
     Write-SuccessLog "Credenciales de dominio: usando texto plano (no recomendado)"
     $DomainSecurePass = ConvertTo-SecureString $Passadmin -AsPlainText -Force
+    try {
+        Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [DEBUG] Passadmin encontrado (texto plano)" -ErrorAction SilentlyContinue
+    } catch {}
 } else {
     Write-ErrorLog "No se proporcionaron credenciales de dominio"
+    try {
+        Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [ERROR] NO se encontraron credenciales (ni SecurePassadmin ni Passadmin)" -ErrorAction SilentlyContinue
+    } catch {}
     throw "Error: Faltan credenciales de dominio"
 }
+
+try {
+    Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [DEBUG] Creando PSCredential con usuario: $Useradmin" -ErrorAction SilentlyContinue
+} catch {}
 
 $Credential = New-Object System.Management.Automation.PSCredential ($Useradmin, $DomainSecurePass)
 
