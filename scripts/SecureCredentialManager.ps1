@@ -46,8 +46,10 @@ function Export-SecureCredential {
         EncryptedPassword = $EncryptedPassword
     }
     
-    # Guardar como JSON
-    $credObject | ConvertTo-Json | Out-File -FilePath $Path -Encoding UTF8 -Force
+    # Guardar como JSON sin BOM (crítico para PowerShell 5.1)
+    $jsonContent = $credObject | ConvertTo-Json
+    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllText($Path, $jsonContent, $utf8NoBom)
 }
 
 function Import-SecureCredential {
@@ -63,14 +65,35 @@ function Import-SecureCredential {
         [byte[]]$Key
     )
     
-    # Leer archivo JSON
-    $credObject = Get-Content -Path $Path -Raw | ConvertFrom-Json
+    # Validar que el archivo existe
+    if (-not (Test-Path $Path)) {
+        throw "Archivo de credenciales no encontrado: $Path"
+    }
     
-    # Descifrar contraseña
-    $SecurePassword = ConvertTo-SecureString -String $credObject.EncryptedPassword -Key $Key
-    
-    # Crear PSCredential
-    return New-Object System.Management.Automation.PSCredential($credObject.UserName, $SecurePassword)
+    try {
+        # Leer archivo JSON con manejo de BOM
+        $jsonContent = [System.IO.File]::ReadAllText($Path, [System.Text.Encoding]::UTF8)
+        
+        # Remover BOM si existe (para compatibilidad)
+        $jsonContent = $jsonContent.TrimStart([char]0xFEFF)
+        
+        # Parsear JSON
+        $credObject = $jsonContent | ConvertFrom-Json
+        
+        # Validar estructura
+        if (-not $credObject.UserName -or -not $credObject.EncryptedPassword) {
+            throw "Estructura de credenciales inválida en: $Path"
+        }
+        
+        # Descifrar contraseña
+        $SecurePassword = ConvertTo-SecureString -String $credObject.EncryptedPassword -Key $Key
+        
+        # Crear PSCredential
+        return New-Object System.Management.Automation.PSCredential($credObject.UserName, $SecurePassword)
+        
+    } catch {
+        throw "Error al importar credenciales desde $Path`: $($_.Exception.Message)"
+    }
 }
 
 function Protect-CredentialFiles {

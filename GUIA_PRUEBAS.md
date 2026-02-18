@@ -135,9 +135,10 @@ cd C:\AutoConfigPS
 - [ ] Script solicita contraseña de Wi-Fi
 - [ ] Se crea directorio `SecureConfig\`
 - [ ] Se crean archivos:
-  - `SecureConfig\cred_domain.xml`
-  - `SecureConfig\cred_local.xml`
-  - `SecureConfig\cred_wifi.xml`
+  - `SecureConfig\cred_domain.json`
+  - `SecureConfig\cred_local.json`
+  - `SecureConfig\cred_wifi.json`
+  - `SecureConfig\.aeskey`
 - [ ] Permisos en `SecureConfig\`: solo Administrators y SYSTEM
 
 **Verificación de permisos**:
@@ -162,25 +163,32 @@ $HostName = "EQUIPO-PRUEBA-01"
 $Delay = 5
 $ScriptPath = "C:\AutoConfigPS\scripts"
 
-# Credenciales de dominio (CIFRADAS)
-$DomainCredPath = "$PSScriptRoot\SecureConfig\cred_domain.xml"
-$DomainCredential = Import-Clixml -Path $DomainCredPath
+# Importar módulo de gestión segura de credenciales
+. "$PSScriptRoot\scripts\SecureCredentialManager.ps1"
+
+# Cargar clave AES compartida
+$keyPath = "$PSScriptRoot\SecureConfig\.aeskey"
+$aesKey = [System.IO.File]::ReadAllBytes($keyPath)
+
+# Credenciales de dominio (CIFRADAS con AES)
+$DomainCredPath = ".\SecureConfig\cred_domain.json"
+$DomainCredential = Import-SecureCredential -Path $DomainCredPath -Key $aesKey
 $Useradmin = $DomainCredential.UserName
 $SecurePassadmin = $DomainCredential.Password
 
-# Credenciales de usuario local (CIFRADAS)
-$LocalCredPath = "$PSScriptRoot\SecureConfig\cred_local.xml"
+# Credenciales de usuario local (CIFRADAS con AES)
+$LocalCredPath = ".\SecureConfig\cred_local.json"
 if (Test-Path $LocalCredPath) {
-    $LocalCredential = Import-Clixml -Path $LocalCredPath
+    $LocalCredential = Import-SecureCredential -Path $LocalCredPath -Key $aesKey
     $Username = $LocalCredential.UserName
     $SecurePassword = $LocalCredential.Password
 }
 
 # Configuración de red Wi-Fi
 $NetworkSSID = "WiFi-Corporativa"
-$WifiCredPath = "$PSScriptRoot\SecureConfig\cred_wifi.xml"
-$WifiCredential = Import-Clixml -Path $WifiCredPath
-$SecureNetworkPass = $WifiCredential.Password
+$WifiCredPath = ".\SecureConfig\cred_wifi.json"
+$WifiPassword = Import-SecureCredential -Path $WifiCredPath -Key $aesKey -PasswordOnly
+$SecureNetworkPass = $WifiPassword
 
 # Unidad Organizacional (OPCIONAL)
 $OUPath = "OU=Pruebas,OU=Workstations,DC=tu-dominio,DC=local"

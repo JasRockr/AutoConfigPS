@@ -47,10 +47,8 @@ $ScriptPath = "C:\Ruta\De\Los\Scripts"  # Ruta a la carpeta scripts\
 
 # OPCIÓN A (RECOMENDADA): Credenciales cifradas
 # Descomenta estas líneas después de ejecutar Setup-Credentials.ps1
-# $DomainCredPath = "$PSScriptRoot\SecureConfig\cred_domain.xml"
-# $DomainCredential = Import-Clixml -Path $DomainCredPath
-# $Useradmin = $DomainCredential.UserName
-# $SecurePassadmin = $DomainCredential.Password
+# $DomainCredPath = ".\SecureConfig\cred_domain.json"
+# Importa automáticamente usando SecureCredentialManager.ps1
 
 # OPCIÓN B (NO RECOMENDADA): Texto plano
 # Comenta o elimina estas líneas cuando uses credenciales cifradas
@@ -64,10 +62,8 @@ $SecurePassadmin = ConvertTo-SecureString $Passadmin -AsPlainText -Force
 
 # OPCIÓN A (RECOMENDADA): Credenciales cifradas
 # Descomenta estas líneas después de ejecutar Setup-Credentials.ps1
-# $LocalCredPath = "$PSScriptRoot\SecureConfig\cred_local.xml"
-# if (Test-Path $LocalCredPath) {
-#     $LocalCredential = Import-Clixml -Path $LocalCredPath
-#     $Username = $LocalCredential.UserName
+# $LocalCredPath = ".\SecureConfig\cred_local.json"
+# Importa automáticamente usando SecureCredentialManager.ps1
 #     $SecurePassword = $LocalCredential.Password
 # } else {
 #     Write-Warning "No se encontraron credenciales locales cifradas. Autologin local deshabilitado."
@@ -89,9 +85,8 @@ $NetworkSSID = "Red WiFi"   # SSID de la red Wi-Fi corporativa
 
 # OPCIÓN A (RECOMENDADA): Contraseña cifrada
 # Descomenta estas líneas después de ejecutar Setup-Credentials.ps1
-# $WifiCredPath = "$PSScriptRoot\SecureConfig\cred_wifi.xml"
-# $WifiCredential = Import-Clixml -Path $WifiCredPath
-# $SecureNetworkPass = $WifiCredential.Password
+# $WifiCredPath = ".\SecureConfig\cred_wifi.json"
+# Importa automáticamente usando SecureCredentialManager.ps1
 
 # OPCIÓN B (NO RECOMENDADA): Texto plano
 # Comenta o elimina estas líneas cuando uses credenciales cifradas

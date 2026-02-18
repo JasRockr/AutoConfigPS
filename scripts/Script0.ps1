@@ -262,9 +262,9 @@ Write-SectionHeader "6. CREDENCIALES SEGURAS (OPCIONAL)"
 $secureConfigExists = Test-Path $SecureConfigPath
 
 if ($secureConfigExists) {
-    $domainCredExists = Test-Path "$SecureConfigPath\cred_domain.xml"
-    $localCredExists = Test-Path "$SecureConfigPath\cred_local.xml"
-    $wifiCredExists = Test-Path "$SecureConfigPath\cred_wifi.xml"
+    $domainCredExists = Test-Path "$SecureConfigPath\cred_domain.json"
+    $localCredExists = Test-Path "$SecureConfigPath\cred_local.json"
+    $wifiCredExists = Test-Path "$SecureConfigPath\cred_wifi.json"
 
     $credDetails = @()
     if ($domainCredExists) { $credDetails += "Dominio" }

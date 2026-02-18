@@ -266,10 +266,8 @@ El script:
 .\scripts\Setup-Credentials.ps1
 
 # 2. Editar config.ps1 y descomentar líneas de credenciales cifradas
-$DomainCredPath = "$PSScriptRoot\SecureConfig\cred_domain.xml"
-$DomainCredential = Import-Clixml -Path $DomainCredPath
-$Useradmin = $DomainCredential.UserName
-$SecurePassadmin = $DomainCredential.Password
+$DomainCredPath = ".\SecureConfig\cred_domain.json"
+# Las credenciales se cargan automáticamente con SecureCredentialManager.ps1
 ```
 
 #### Opción B: Texto Plano (No Recomendado)

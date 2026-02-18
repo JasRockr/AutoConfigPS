@@ -115,13 +115,14 @@ Implementar sistema de credenciales cifradas usando CliXML y DPAPI de Windows pa
 - Asistente paso a paso para configurar credenciales
 - Validación de privilegios de administrador
 - Creación de directorio `SecureConfig\` con permisos restrictivos
-- Cifrado mediante `Export-Clixml` (DPAPI)
+- Cifrado mediante AES-256 con DPAPI (compatible con SYSTEM)
 - Validación de credenciales guardadas
 - Manejo de errores con reintentos
 - Archivos generados:
-  - `SecureConfig\cred_domain.xml` - Credenciales de dominio
-  - `SecureConfig\cred_local.xml` - Credenciales locales (opcional)
-  - `SecureConfig\cred_wifi.xml` - Contraseña Wi-Fi
+  - `SecureConfig\cred_domain.json` - Credenciales de dominio
+  - `SecureConfig\cred_local.json` - Credenciales locales (opcional)
+  - `SecureConfig\cred_wifi.json` - Contraseña Wi-Fi
+  - `SecureConfig\.aeskey` - Clave AES compartida
 
 **2. example-config.ps1 (MODIFICADO)**
 - Agregada documentación extensa sobre credenciales cifradas
@@ -1236,12 +1237,12 @@ $configExists = Test-Path "$PSScriptRoot\..\config.ps1"
 
 **VALIDACIÓN 6: Credenciales Cifradas**
 ```powershell
-$domainCredExists = Test-Path "$SecureConfigPath\cred_domain.xml"
-$localCredExists = Test-Path "$SecureConfigPath\cred_local.xml"
-$wifiCredExists = Test-Path "$SecureConfigPath\cred_wifi.xml"
+$domainCredExists = Test-Path "$SecureConfigPath\cred_domain.json"
+$localCredExists = Test-Path "$SecureConfigPath\cred_local.json"
+$wifiCredExists = Test-Path "$SecureConfigPath\cred_wifi.json"
 ```
 - **Crítica:** No (opcional)
-- **Detecta:** Archivos de credenciales cifradas
+- **Detecta:** Archivos de credenciales cifradas (formato JSON)
 - **Solución si falla:** Ejecutar Setup-Credentials.ps1 o usar texto plano
 
 **VALIDACIÓN 7: Espacio en Disco**
