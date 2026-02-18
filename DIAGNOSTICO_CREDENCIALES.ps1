@@ -11,7 +11,14 @@ Write-Host "  DIAGNOSTICO DE CREDENCIALES" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-$SecureConfigPath = ".\SecureConfig"
+# Determinar rutas de forma robusta (igual que otros scripts del proyecto)
+$ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+$SecureConfigPath = "$ScriptDir\SecureConfig"
+
+Write-Host "[i] Directorio del script: $ScriptDir" -ForegroundColor Gray
+Write-Host "[i] Ruta SecureConfig: $SecureConfigPath" -ForegroundColor Gray
+Write-Host ""
+
 $files = @(
     "$SecureConfigPath\cred_domain.json",
     "$SecureConfigPath\cred_local.json",

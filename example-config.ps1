@@ -47,8 +47,19 @@ $ScriptPath = "C:\Ruta\De\Los\Scripts"  # Ruta a la carpeta scripts\
 
 # OPCIÓN A (RECOMENDADA): Credenciales cifradas
 # Descomenta estas líneas después de ejecutar Setup-Credentials.ps1
-# $DomainCredPath = ".\SecureConfig\cred_domain.json"
-# Importa automáticamente usando SecureCredentialManager.ps1
+# 
+# Importar módulo de gestión segura de credenciales
+# . "$PSScriptRoot\scripts\SecureCredentialManager.ps1"
+# 
+# Cargar clave AES compartida
+# $keyPath = "$PSScriptRoot\SecureConfig\.aeskey"
+# $aesKey = [System.IO.File]::ReadAllBytes($keyPath)
+# 
+# Credenciales de dominio
+# $DomainCredPath = "$PSScriptRoot\SecureConfig\cred_domain.json"
+# $DomainCredential = Import-SecureCredential -Path $DomainCredPath -Key $aesKey
+# $Useradmin = $DomainCredential.UserName
+# $SecurePassadmin = $DomainCredential.Password
 
 # OPCIÓN B (NO RECOMENDADA): Texto plano
 # Comenta o elimina estas líneas cuando uses credenciales cifradas
@@ -62,8 +73,10 @@ $SecurePassadmin = ConvertTo-SecureString $Passadmin -AsPlainText -Force
 
 # OPCIÓN A (RECOMENDADA): Credenciales cifradas
 # Descomenta estas líneas después de ejecutar Setup-Credentials.ps1
-# $LocalCredPath = ".\SecureConfig\cred_local.json"
-# Importa automáticamente usando SecureCredentialManager.ps1
+# $LocalCredPath = "$PSScriptRoot\SecureConfig\cred_local.json"
+# if (Test-Path $LocalCredPath) {
+#     $LocalCredential = Import-SecureCredential -Path $LocalCredPath -Key $aesKey
+#     $Username = $LocalCredential.UserName
 #     $SecurePassword = $LocalCredential.Password
 # } else {
 #     Write-Warning "No se encontraron credenciales locales cifradas. Autologin local deshabilitado."
@@ -85,8 +98,9 @@ $NetworkSSID = "Red WiFi"   # SSID de la red Wi-Fi corporativa
 
 # OPCIÓN A (RECOMENDADA): Contraseña cifrada
 # Descomenta estas líneas después de ejecutar Setup-Credentials.ps1
-# $WifiCredPath = ".\SecureConfig\cred_wifi.json"
-# Importa automáticamente usando SecureCredentialManager.ps1
+# $WifiCredPath = "$PSScriptRoot\SecureConfig\cred_wifi.json"
+# $WifiCredential = Import-SecureCredential -Path $WifiCredPath -Key $aesKey
+# $SecureNetworkPass = $WifiCredential.Password
 
 # OPCIÓN B (NO RECOMENDADA): Texto plano
 # Comenta o elimina estas líneas cuando uses credenciales cifradas
