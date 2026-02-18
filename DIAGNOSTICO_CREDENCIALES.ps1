@@ -1,4 +1,4 @@
-# Script de diagnóstico para archivos de credenciales
+# Script de diagnostico para archivos de credenciales
 # Ayuda a identificar problemas con archivos JSON corruptos o con BOM
 
 param(
@@ -7,7 +7,7 @@ param(
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  DIAGNÓSTICO DE CREDENCIALES" -ForegroundColor Cyan
+Write-Host "  DIAGNOSTICO DE CREDENCIALES" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -33,12 +33,12 @@ foreach ($file in $files) {
     
     Write-Host "  [OK] Archivo existe" -ForegroundColor Green
     
-    # Verificar tamaño
+    # Verificar tamano
     $fileSize = (Get-Item $file).Length
-    Write-Host "  [i] Tamaño: $fileSize bytes" -ForegroundColor Gray
+    Write-Host "  [i] Tamano: $fileSize bytes" -ForegroundColor Gray
     
     if ($fileSize -eq 0) {
-        Write-Host "  [!] PROBLEMA: Archivo vacío" -ForegroundColor Red
+        Write-Host "  [!] PROBLEMA: Archivo vacio" -ForegroundColor Red
         $hasIssues = $true
         continue
     }
@@ -65,7 +65,7 @@ foreach ($file in $files) {
             
             # Verificar estructura
             if ($json.UserName -or $json.EncryptedPassword) {
-                Write-Host "  [OK] Estructura JSON válida" -ForegroundColor Green
+                Write-Host "  [OK] Estructura JSON valida" -ForegroundColor Green
                 Write-Host "  [i] Usuario: $($json.UserName)" -ForegroundColor Gray
             } else {
                 Write-Host "  [!] PROBLEMA: Estructura JSON incompleta" -ForegroundColor Red
@@ -78,7 +78,7 @@ foreach ($file in $files) {
             $hasIssues = $true
         }
         
-        # Opción de reparar BOM
+        # Opcion de reparar BOM
         if ($hasBOM -and $FixBOM) {
             Write-Host "  [i] Intentando reparar (remover BOM)..." -ForegroundColor Yellow
             
