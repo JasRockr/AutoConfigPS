@@ -58,11 +58,10 @@ Write-Host "Cargando archivo de config..." -ForegroundColor Cyan
 $ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
 $ProjectRoot = Split-Path -Parent $ScriptDir
 
-# Buscar config.ps1 en múltiples ubicaciones posibles
+# Buscar config.ps1 en ubicaciones relativas (sin rutas hardcoded)
 $ConfigLocations = @(
     "$ProjectRoot\config.ps1",                                    # Ubicación estándar
-    "$ScriptDir\..\config.ps1",                                   # Relativa desde scripts
-    "C:\Users\Usuario\Downloads\AutoConfigPS\config.ps1"         # Ruta absoluta conocida
+    "$ScriptDir\..\config.ps1"                                     # Relativa desde scripts
 )
 
 try {
@@ -607,6 +606,9 @@ try {
     try {
         Add-Content -Path $earlyLogPath -Value "[LOG][$earlyTimestamp] [DEBUG] Contraseña descifrada - Longitud: $passLength, Vista previa: $passPreview" -ErrorAction SilentlyContinue
     } catch {}
+    
+    # Limpiar variable de texto plano inmediatamente después de validación
+    Remove-Variable -Name PlainTest -ErrorAction SilentlyContinue
     
     if ($passLength -eq 0) {
         Write-ErrorLog "[CRITICAL] La contraseña descifrada está vacía"

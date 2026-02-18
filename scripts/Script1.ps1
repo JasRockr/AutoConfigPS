@@ -565,11 +565,24 @@ try {
             Write-SuccessLog "Equipo en dominio detectado - usando credenciales de dominio para rename"
             
             # Validar que existan credenciales de dominio
-            if (-not $DomainCred) {
-                throw "Se requieren credenciales de dominio para cambiar el nombre, pero no están disponibles"
+            if (-not $Useradmin -or -not $SecurePassadmin) {
+                throw "Se requieren credenciales de dominio para cambiar el nombre, pero no están disponibles (Useradmin o SecurePassadmin)"
             }
             
-            $renameParams.Add('DomainCredential', $DomainCred)
+            # CRÍTICO: Validar formato del usuario (debe incluir dominio)
+            $DomainUser = $Useradmin
+            if (-not ($DomainUser.Contains('\\') -or $DomainUser.Contains('@'))) {
+                Write-Host "  ⚠ Usuario sin dominio detectado. Agregando dominio automáticamente..." -ForegroundColor Yellow
+                $DomainUser = "$DomainName\\$DomainUser"
+                Write-Host "  Usuario corregido: $DomainUser" -ForegroundColor Cyan
+                Write-SuccessLog "Usuario corregido automáticamente a: $DomainUser para Rename-Computer"
+            }
+            
+            # Crear objeto PSCredential con las credenciales de dominio
+            $DomainCredential = New-Object System.Management.Automation.PSCredential($DomainUser, $SecurePassadmin)
+            $renameParams.Add('DomainCredential', $DomainCredential)
+            
+            Write-Host "  Usuario: $DomainUser" -ForegroundColor Gray
         }
         
         # Cambiar el nombre del equipo
