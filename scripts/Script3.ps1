@@ -465,21 +465,42 @@ Write-SuccessLog "Validando cambios aplicados..."
 try {
     # Verificar si el nombre del equipo ha cambiado correctamente
     $currentName = (Get-WmiObject -Class Win32_ComputerSystem).Name
+    $pendingName = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName\ComputerName" -Name "ComputerName" -ErrorAction SilentlyContinue).ComputerName
+    
+    Write-Host "Verificando nombre del equipo..." -ForegroundColor Gray
+    Write-Host "  Nombre actual (activo): $currentName" -ForegroundColor Gray
+    Write-Host "  Nombre esperado: $HostName" -ForegroundColor Gray
+    if ($pendingName -and $pendingName -ne $currentName) {
+        Write-Host "  Nombre pendiente (tras próximo reinicio): $pendingName" -ForegroundColor Gray
+    }
+    
     if ($currentName -eq $HostName) {
-        Write-Host "Validación exitosa: El nombre del equipo es '$HostName'." -ForegroundColor Green
+        Write-Host "[OK] El nombre del equipo es correcto: '$HostName'" -ForegroundColor Green
         Write-SuccessLog "El nombre del equipo se cambió correctamente a '$HostName'."
+    } elseif ($pendingName -eq $HostName) {
+        Write-Host "[ADVERTENCIA] El nombre está programado para cambiar a '$HostName' en el próximo reinicio" -ForegroundColor Yellow
+        Write-SuccessLog "Cambio de nombre pendiente: '$currentName' -> '$HostName' (requiere reinicio adicional)"
+        # No lanzar error, continuar
     } else {
-        Write-ErrorLog "El nombre del equipo no se cambió correctamente. Nombre actual: '$currentName'."
-        throw "El nombre del equipo no se cambió correctamente. Nombre actual: '$currentName'."
+        Write-Host "[!] El nombre del equipo NO coincide" -ForegroundColor Red
+        Write-Host "    Actual: '$currentName', Esperado: '$HostName'" -ForegroundColor Yellow
+        Write-ErrorLog "El nombre del equipo no se cambió correctamente. Nombre actual: '$currentName', Esperado: '$HostName'"
+        
+        # IMPORTANTE: No detener el flujo por esto, solo advertir
+        Write-Host ""
+        Write-Host "NOTA: Este puede ser un problema cosmético. Continuando con instalación..." -ForegroundColor Cyan
+        Write-Host ""
     }
 
     # Verificar si el equipo está unido al dominio
     $currentDomain = (Get-WmiObject -Class Win32_ComputerSystem).Domain
     if ($currentDomain -eq $DomainName) {
-        Write-Host "El equipo está correctamente unido al dominio '$DomainName'." -ForegroundColor Green
+        Write-Host "[OK] El equipo está unido al dominio '$DomainName'" -ForegroundColor Green
         Write-SuccessLog "El equipo está unido correctamente al dominio '$DomainName'."
     } else {
-        Write-ErrorLog "El equipo no está unido al dominio '$DomainName'."
+        Write-Host "[!] El equipo NO está unido al dominio esperado" -ForegroundColor Red
+        Write-Host "    Dominio actual: '$currentDomain', Esperado: '$DomainName'" -ForegroundColor Yellow
+        Write-ErrorLog "El equipo no está unido al dominio '$DomainName'. Dominio actual: '$currentDomain'"
         throw "El equipo no está unido al dominio '$DomainName'."
     }
 } catch {

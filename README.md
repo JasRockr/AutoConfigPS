@@ -29,6 +29,7 @@
 ## ✨ Características
 
 ### Configuración Automatizada
+
 - ✅ Cambio de nombre del equipo
 - ✅ Configuración de red Wi-Fi (WPA2-PSK)
 - ✅ Unión automática al dominio Active Directory
@@ -38,12 +39,14 @@
 - ✅ Tareas programadas para continuidad post-reinicio
 
 ### Seguridad (v0.0.4)
+
 - 🔒 **Credenciales cifradas con DPAPI de Windows**
 - 🔒 **Permisos restrictivos en archivos de log**
 - 🔒 **Limpieza automática de variables sensibles en memoria**
 - 🔒 **Validación de acceso a controlador de dominio**
 
 ### Robustez (v0.0.4)
+
 - 🛡️ **Pre-validación de requisitos del sistema**
 - 🛡️ **Validación completa de conectividad Wi-Fi**
 - 🛡️ **Instalaciones con timeout configurables**
@@ -56,22 +59,26 @@
 ## 🆕 Novedades v0.0.4
 
 ### 🔐 Seguridad Mejorada
+
 - **Credenciales cifradas**: Script `Setup-Credentials.ps1` para configurar credenciales usando DPAPI
 - **Logs protegidos**: Permisos restrictivos (solo Administradores + SYSTEM)
 - **Validación de DC**: Verifica acceso al controlador de dominio antes de unirse
 
 ### 🌐 Conectividad Robusta
+
 - **Validación Wi-Fi completa**: IP, gateway, DNS
 - **Reintentos inteligentes**: Hasta 5 intentos con delay configurable
 - **3 métodos de detección de DC**: DNS SRV, DNS directo, nltest
 
 ### 📦 Instalaciones Mejoradas
+
 - **Timeouts configurables**: Por defecto 300s (Winget), 600s (Network)
 - **Validación de exit codes**: Detecta instalaciones exitosas y errores
 - **Resumen visual**: Estadísticas y duración de cada instalación
 - **Soporte para ID de Winget**: Evita ambigüedades
 
 ### ✅ Pre-validación
+
 - **Script0.ps1**: Valida 8 requisitos antes de iniciar
   - Privilegios admin, PowerShell 5.1+, Wi-Fi, Winget
   - config.ps1, credenciales, espacio disco, conectividad
@@ -79,6 +86,7 @@
 - **Exit codes**: Bloquea inicio si faltan requisitos críticos
 
 ### 🏢 Active Directory
+
 - **Soporte para OU**: Especifica OU de destino (`$OUPath`)
 - **Nombres duplicados**: Detección automática y generación de nombre alternativo
 - **Validación LDAP**: Sin requerir módulo ActiveDirectory
@@ -88,10 +96,12 @@
 ## 📋 Requisitos
 
 ### Sistema Operativo
+
 - Windows 10 (1809+) o Windows 11
 - PowerShell 5.1 o superior
 
 ### Permisos y Acceso
+
 - **Privilegios de administrador local**
 - **Usuario de dominio con permisos de unión a equipos**
 - **Conectividad Wi-Fi** (o Ethernet)
@@ -99,6 +109,7 @@
 - **Acceso a red corporativa** (para unión al dominio)
 
 ### Herramientas Opcionales
+
 - **Winget** (Windows Package Manager) - para instalaciones desde repositorio
 - **Recursos de red UNC** - para instalaciones personalizadas
 
@@ -116,12 +127,13 @@ Get-ExecutionPolicy
 ```
 
 **Resultado esperado:**
+
 - `Restricted` → ❌ Scripts bloqueados (configuración por defecto)
 - `RemoteSigned` o `Unrestricted` → ✅ Scripts permitidos
 
 ### Habilitar Ejecución de Scripts
 
-**Opción A: RemoteSigned (RECOMENDADO - Seguro)**
+**Opción A: RemoteSigned (RECOMENDADO - Seguro)**  
 
 ```powershell
 # Ejecutar en PowerShell como Administrador:
@@ -133,7 +145,7 @@ Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 - ✅ Balance entre seguridad y funcionalidad
 - ✅ **Recomendado para entornos corporativos**
 
-**Opción B: Bypass (Para pruebas/desarrollo)**
+**Opción B: Bypass (Para pruebas/desarrollo)**  
 
 ```powershell
 # Ejecutar en PowerShell como Administrador:
@@ -144,7 +156,7 @@ Set-ExecutionPolicy Bypass -Scope CurrentUser -Force
 - ⚠️ Menos seguro, solo para entornos de prueba
 - ⚠️ NO recomendado para producción
 
-**Opción C: Ejecución temporal (Sin cambiar configuración)**
+**Opción C: Ejecución temporal (Sin cambiar configuración)**  
 
 ```powershell
 # Ejecutar scripts con bypass temporal:
@@ -173,7 +185,7 @@ Set-ExecutionPolicy Restricted -Scope CurrentUser -Force
 ### 📖 Más Información sobre Políticas de Ejecución
 
 | Política | Descripción | Seguridad | Uso Recomendado |
-|----------|-------------|-----------|-----------------|
+| -------- | ----------- | --------- | --------------- |
 | `Restricted` | No permite ningún script | 🔒 Máxima | Por defecto en Windows |
 | `RemoteSigned` | Scripts locales OK, remotos requieren firma | 🔒 Alta | **Producción/Corporativo** |
 | `Unrestricted` | Todos los scripts, advierte sobre remotos | ⚠️ Media | Desarrollo |
@@ -203,6 +215,7 @@ cd AutoConfigPS
 ```
 
 Sigue el asistente interactivo para configurar:
+
 - Credenciales de dominio (obligatorio)
 - Credenciales de usuario local (opcional)
 - Contraseña de Wi-Fi (recomendado)
@@ -245,6 +258,7 @@ $OUPath = "OU=Workstations,OU=Equipos,DC=empresa,DC=local"
 ```
 
 El script:
+
 1. ✅ Valida requisitos (Script0.ps1)
 2. ⚙️ Configura Wi-Fi y renombra equipo (Script1.ps1)
 3. 🔄 Reinicia
@@ -320,6 +334,7 @@ $apps = @(
 ```
 
 **Campos disponibles:**
+
 - `Name` (obligatorio): Nombre de la aplicación
 - `Source` (obligatorio): `"Winget"` o `"Network"`
 - `ID` (opcional): ID específico de Winget
@@ -340,7 +355,7 @@ Si no se define, el equipo se une al contenedor "Computers" predeterminado.
 
 ## 📁 Estructura del Proyecto
 
-```
+```structure
 AutoConfigPS/
 ├── scripts/
 │   ├── Setup-Credentials.ps1  # Asistente de credenciales cifradas
@@ -367,7 +382,7 @@ AutoConfigPS/
 
 ## 🔄 Flujo de Ejecución
 
-```
+```diagram
 ┌─────────────────────────────────────────────────────────────┐
 │                      INICIO (init.bat)                       │
 └────────────────────────┬────────────────────────────────────┘
@@ -451,6 +466,7 @@ Las credenciales se cifran usando **DPAPI (Data Protection API)** de Windows:
 - ✅ Almacenamiento en `SecureConfig/` con permisos restrictivos
 
 **Configurar:**
+
 ```powershell
 .\scripts\Setup-Credentials.ps1
 ```
@@ -458,6 +474,7 @@ Las credenciales se cifran usando **DPAPI (Data Protection API)** de Windows:
 ### Permisos de Archivos de Log
 
 Los archivos de log tienen permisos restrictivos:
+
 - Solo **Administrators** y **SYSTEM** pueden leer/escribir
 - Previene exposición de información sensible
 - Logs no modificables por usuarios estándar
@@ -465,6 +482,7 @@ Los archivos de log tienen permisos restrictivos:
 ### Limpieza de Memoria
 
 Las variables con contraseñas se limpian explícitamente:
+
 ```powershell
 [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
 Remove-Variable -Name PlainTextPassword
@@ -485,7 +503,8 @@ Remove-Variable -Name PlainTextPassword
 ### ⚠️ ERROR: "No se puede cargar el archivo... está deshabilitada la ejecución de scripts"
 
 **Problema:** Al ejecutar cualquier script de PowerShell obtienes error similar a:
-```
+
+```text
 No se puede cargar el archivo C:\AutoConfigPS\scripts\Script0.ps1 porque
 la ejecución de scripts está deshabilitada en este sistema.
 ```
@@ -493,6 +512,7 @@ la ejecución de scripts está deshabilitada en este sistema.
 **Causa:** Política de ejecución de PowerShell está en `Restricted` (configuración por defecto de Windows)
 
 **Solución:**
+
 ```powershell
 # Abrir PowerShell como Administrador y ejecutar:
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
@@ -511,8 +531,9 @@ Get-ExecutionPolicy
 **Problema:** Validación crítica falla
 
 **Soluciones:**
+
 - **Sin privilegios admin**: Ejecutar `init.bat` como administrador
-- **PowerShell < 5.1**: Actualizar desde https://aka.ms/powershell-release
+- **PowerShell < 5.1**: Actualizar desde <https://aka.ms/powershell-release>
 - **Sin Wi-Fi**: Si usas Ethernet, modificar Script1.ps1 para omitir configuración Wi-Fi
 - **config.ps1 no existe**: Copiar `example-config.ps1` a `config.ps1`
 - **Sin Winget**: Instalar desde Microsoft Store (App Installer)
@@ -522,16 +543,21 @@ Get-ExecutionPolicy
 **Problema:** No se puede conectar a Wi-Fi
 
 **Soluciones:**
+
 1. Verificar SSID y contraseña en config.ps1
 2. Verificar que el perfil Wi-Fi no exista previamente:
+
    ```powershell
    netsh wlan show profiles
    netsh wlan delete profile name="RedCorporativa"
    ```
+
 3. Verificar que el adaptador Wi-Fi esté habilitado:
+
    ```powershell
    Get-NetAdapter | Where-Object {$_.InterfaceDescription -match "Wi-Fi"}
    ```
+
 4. Revisar logs en `C:\Logs\setup_errors.log`
 
 ### Script2.ps1 - Falla Unión al Dominio
@@ -539,6 +565,7 @@ Get-ExecutionPolicy
 **Problema:** No se puede unir al dominio
 
 **Soluciones:**
+
 1. **Error "DC no encontrado"**:
    - Verificar conectividad: `Test-Connection -ComputerName dominio.local`
    - Verificar DNS: `nslookup dominio.local`
@@ -562,6 +589,7 @@ Get-ExecutionPolicy
 **Problema:** Instalaciones de aplicaciones fallan o timeout
 
 **Soluciones:**
+
 1. **Timeout de Winget**:
    - Aumentar timeout en config.ps1 o apps.json: `"Timeout": 600`
    - Verificar conectividad a Internet
@@ -583,12 +611,14 @@ Get-ExecutionPolicy
 ### Logs y Diagnóstico
 
 **Ubicación de logs:**
+
 - `C:\Logs\setup_success.log` - Operaciones exitosas
 - `C:\Logs\setup_errors.log` - Errores y advertencias
 
 **Rotación automática:** Archivos mayores a 10MB se renombran automáticamente
 
 **Revisar logs:**
+
 ```powershell
 # Ver últimas 50 líneas de errores
 Get-Content C:\Logs\setup_errors.log -Tail 50
@@ -603,7 +633,7 @@ notepad C:\Logs\setup_success.log
 ### Problemas Comunes
 
 | Problema | Causa | Solución |
-|----------|-------|----------|
+| -------- | ----- | -------- |
 | **"Ejecución de scripts deshabilitada"** | ExecutionPolicy en Restricted | `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force` |
 | Script no inicia | Sin privilegios admin | Ejecutar como admin |
 | Wi-Fi no conecta | SSID/contraseña incorrecta | Verificar config.ps1 |
@@ -650,7 +680,7 @@ Este proyecto está licenciado bajo la Licencia MIT - ver el archivo [LICENSE](L
 
 ## 👤 Autor
 
-**Json Rivera (JasRockr!)**
+**Json Rivera (JasRockr!)**  
 
 ---
 

@@ -19,22 +19,32 @@ Write-Host "[i] Directorio del script: $ScriptDir" -ForegroundColor Gray
 Write-Host "[i] Ruta SecureConfig: $SecureConfigPath" -ForegroundColor Gray
 Write-Host ""
 
+# Definir archivos con su nivel de criticidad
 $files = @(
-    "$SecureConfigPath\cred_domain.json",
-    "$SecureConfigPath\cred_local.json",
-    "$SecureConfigPath\cred_wifi.json",
-    "$SecureConfigPath\.aeskey"
+    @{ Path = "$SecureConfigPath\cred_domain.json"; Required = $true; Description = "Credenciales de dominio" },
+    @{ Path = "$SecureConfigPath\cred_wifi.json"; Required = $true; Description = "Credenciales WiFi" },
+    @{ Path = "$SecureConfigPath\.aeskey"; Required = $true; Description = "Clave de cifrado AES" },
+    @{ Path = "$SecureConfigPath\cred_local.json"; Required = $false; Description = "Credenciales locales (opcional)" }
 )
 
 $hasIssues = $false
 
-foreach ($file in $files) {
+foreach ($fileInfo in $files) {
+    $file = $fileInfo.Path
     $fileName = Split-Path -Leaf $file
+    $isRequired = $fileInfo.Required
+    $description = $fileInfo.Description
+    
     Write-Host "Verificando: $fileName" -ForegroundColor Yellow
+    Write-Host "  [i] Tipo: $description" -ForegroundColor Gray
     
     if (-not (Test-Path $file)) {
-        Write-Host "  [!] Archivo NO existe" -ForegroundColor Red
-        $hasIssues = $true
+        if ($isRequired) {
+            Write-Host "  [!] Archivo NO existe (REQUERIDO)" -ForegroundColor Red
+            $hasIssues = $true
+        } else {
+            Write-Host "  [-] Archivo NO existe (opcional - se usara texto plano)" -ForegroundColor DarkGray
+        }
         continue
     }
     
@@ -134,8 +144,14 @@ if ($hasIssues) {
     Write-Host "  1. Regenerar credenciales: .\scripts\Setup-Credentials.ps1" -ForegroundColor Gray
     Write-Host "  2. Reparar archivos BOM: .\DIAGNOSTICO_CREDENCIALES.ps1 -FixBOM" -ForegroundColor Gray
     Write-Host ""
+    Write-Host "NOTA: Los archivos marcados como 'opcional' no impiden la ejecucion." -ForegroundColor Cyan
+    Write-Host ""
 } else {
     Write-Host "  RESULTADO: TODO CORRECTO" -ForegroundColor Green
     Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "NOTAS:" -ForegroundColor Cyan
+    Write-Host "  - Archivos requeridos: cred_domain.json, cred_wifi.json, .aeskey" -ForegroundColor Gray
+    Write-Host "  - Archivos opcionales: cred_local.json (autologin local)" -ForegroundColor Gray
     Write-Host ""
 }

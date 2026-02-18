@@ -102,14 +102,56 @@ Después de aplicar la solución, ejecuta:
 
 ## 📊 Salida Esperada del Diagnóstico
 
-### ✅ Salida Correcta:
+### ✅ Salida Correcta (todos los archivos):
 ```
 Verificando: cred_domain.json
+  [i] Tipo: Credenciales de dominio
   [OK] Archivo existe
   [i] Tamaño: 245 bytes
   [OK] Sin BOM
   [OK] Estructura JSON válida
   [i] Usuario: admin@dominio.local
+
+Verificando: cred_wifi.json
+  [i] Tipo: Credenciales WiFi
+  [OK] Archivo existe
+  [i] Tamaño: 198 bytes
+  [OK] Sin BOM
+  [OK] Estructura JSON válida
+  [i] Usuario: WiFiPassword
+
+Verificando: .aeskey
+  [i] Tipo: Clave de cifrado AES
+  [OK] Archivo existe
+  [i] Tamaño: 32 bytes
+
+Verificando: cred_local.json
+  [i] Tipo: Credenciales locales (opcional)
+  [OK] Archivo existe
+  [i] Tamaño: 215 bytes
+  [OK] Sin BOM
+  [OK] Estructura JSON válida
+  [i] Usuario: UsuarioLocal
+
+========================================
+  RESULTADO: TODO CORRECTO
+========================================
+
+NOTAS:
+  - Archivos requeridos: cred_domain.json, cred_wifi.json, .aeskey
+  - Archivos opcionales: cred_local.json (autologin local)
+```
+
+### ✅ Salida Correcta (sin archivo opcional):
+```
+Verificando: cred_domain.json
+  [i] Tipo: Credenciales de dominio
+  [OK] Archivo existe
+  ...
+
+Verificando: cred_local.json
+  [i] Tipo: Credenciales locales (opcional)
+  [-] Archivo NO existe (opcional - se usara texto plano)
 
 ========================================
   RESULTADO: TODO CORRECTO
@@ -119,6 +161,7 @@ Verificando: cred_domain.json
 ### ❌ Salida con Problemas:
 ```
 Verificando: cred_domain.json
+  [i] Tipo: Credenciales de dominio
   [OK] Archivo existe
   [i] Tamaño: 248 bytes
   [!] PROBLEMA: Archivo tiene BOM UTF-8
@@ -132,6 +175,8 @@ Verificando: cred_domain.json
 SOLUCIONES:
   1. Regenerar credenciales: .\scripts\Setup-Credentials.ps1
   2. Reparar archivos BOM: .\DIAGNOSTICO_CREDENCIALES.ps1 -FixBOM
+
+NOTA: Los archivos marcados como 'opcional' no impiden la ejecucion.
 ```
 
 ## 📝 Notas Técnicas

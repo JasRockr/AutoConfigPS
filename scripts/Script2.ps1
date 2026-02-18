@@ -714,12 +714,27 @@ try {
         # Proceder con la unión al dominio
         Write-Host "Uniendo equipo al dominio '$DomainName'..." -ForegroundColor Cyan
         Write-Host "  Nombre del equipo: $currentComputerName" -ForegroundColor Gray
+        Write-Host "  Nombre esperado: $HostName" -ForegroundColor Gray
 
         # Preparar parámetros para Add-Computer
         $addComputerParams = @{
             DomainName = $DomainName
             Credential = $Credential
             Force = $true
+        }
+        
+        # CRÍTICO: Si el nombre del equipo no coincide con el esperado,
+        # usar -NewName para cambiarlo durante la unión al dominio
+        if ($currentComputerName -ne $HostName) {
+            Write-Host ""
+            Write-Host "DETECTADO: El nombre del equipo no coincide con el configurado" -ForegroundColor Yellow
+            Write-Host "  Actual: '$currentComputerName', Esperado: '$HostName'" -ForegroundColor Yellow
+            Write-Host "  Aplicando cambio de nombre durante unión al dominio..." -ForegroundColor Cyan
+            Write-SuccessLog "Cambio de nombre necesario - Usando Add-Computer -NewName para aplicar: '$currentComputerName' -> '$HostName'"
+            
+            $addComputerParams.Add('NewName', $HostName)
+            Write-Host "  [i] Parámetro -NewName agregado: '$HostName'" -ForegroundColor Gray
+            Write-Host ""
         }
 
         # Agregar OUPath si está definido (nuevo en v0.0.4)
@@ -737,14 +752,26 @@ try {
         # Ejecutar unión al dominio
         Write-Host ""
         Write-Host "Ejecutando unión al dominio..." -ForegroundColor Cyan
-        Write-SuccessLog "Iniciando proceso de unión al dominio: $DomainName (Equipo: $currentComputerName)"
+        $nameChangeMessage = if ($addComputerParams.ContainsKey('NewName')) {
+            " + Cambio de nombre a '$($addComputerParams.NewName)'"
+        } else {
+            ""
+        }
+        Write-SuccessLog "Iniciando proceso de unión al dominio: $DomainName (Equipo: $currentComputerName)$nameChangeMessage"
         
         try {
             Add-Computer @addComputerParams -ErrorAction Stop
             
             Write-Host ""
             Write-Host "✅ El equipo se unió correctamente al dominio '$DomainName'" -ForegroundColor Green
-            Write-SuccessLog "[SUCCESS] Equipo unido exitosamente al dominio: $DomainName (Equipo: $currentComputerName)"
+            
+            if ($addComputerParams.ContainsKey('NewName')) {
+                Write-Host "✅ Nombre del equipo cambiado a: '$($addComputerParams.NewName)'" -ForegroundColor Green
+                Write-SuccessLog "[SUCCESS] Equipo unido y renombrado exitosamente - Dominio: $DomainName, Nuevo nombre: '$($addComputerParams.NewName)' (Anterior: '$currentComputerName')"
+            } else {
+                Write-SuccessLog "[SUCCESS] Equipo unido exitosamente al dominio: $DomainName (Equipo: $currentComputerName)"
+            }
+            
             Write-Host ""
             Write-Host "IMPORTANTE: El equipo debe reiniciarse para completar la unión al dominio." -ForegroundColor Yellow
             Write-SuccessLog "Unión al dominio completada - reinicio pendiente para aplicar cambios"

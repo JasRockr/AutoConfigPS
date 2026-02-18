@@ -535,15 +535,35 @@ if (-not $Username -or -not (Get-Variable -Name 'SecurePassword' -ErrorAction Si
 # 3. Cambiar nombre del equipo
 # ----------------------------------------------------------------
 try {
-    # Cambiar el nombre del equipo
-    Rename-Computer -NewName $HostName -Force -PassThru
-    Write-Host "El nombre del equipo ha cambiado correctamente a '$HostName'."
-    Write-SuccessLog "El nombre del equipo ha cambiado correctamente a '$HostName'."
+    # Obtener nombre actual
+    $currentComputerName = $env:COMPUTERNAME
+    Write-Host "Nombre actual del equipo: $currentComputerName" -ForegroundColor Gray
+    Write-SuccessLog "Iniciando cambio de nombre - Actual: '$currentComputerName', Objetivo: '$HostName'"
+    
+    # Validar que el nombre sea diferente
+    if ($currentComputerName -eq $HostName) {
+        Write-Host "El equipo ya tiene el nombre correcto: '$HostName'" -ForegroundColor Yellow
+        Write-SuccessLog "Cambio de nombre omitido - El equipo ya se llama '$HostName'"
+    } else {
+        # Cambiar el nombre del equipo
+        $renameResult = Rename-Computer -NewName $HostName -Force -PassThru -ErrorAction Stop
+        
+        # Verificar que el comando programó el cambio correctamente
+        if ($renameResult) {
+            Write-Host "Cambio de nombre programado exitosamente a '$HostName'" -ForegroundColor Green
+            Write-Host "NOTA: El cambio se aplicará después del reinicio" -ForegroundColor Cyan
+            Write-SuccessLog "Cambio de nombre programado exitosamente - Antiguo: '$currentComputerName', Nuevo: '$HostName' (aplicará tras reinicio)"
+        } else {
+            throw "Rename-Computer no retornó resultado esperado"
+        }
+    }
+    
     Start-Sleep -Seconds $Delay
 } catch {
     Write-Error "Error al cambiar el nombre del equipo: $($_.Exception.Message)"
     Write-Host "Por favor, verifica que el nombre del equipo sea válido y no esté en uso en la red."
     Write-ErrorLog "Error al cambiar el nombre del equipo: $($_.Exception.Message)"
+    Write-ErrorLog "Nombre actual: $currentComputerName, Nombre objetivo: $HostName"
     Start-Sleep -Seconds $Delay
     exit 1
 }
