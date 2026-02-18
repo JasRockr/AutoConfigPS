@@ -535,24 +535,52 @@ if (-not $Username -or -not (Get-Variable -Name 'SecurePassword' -ErrorAction Si
 # 3. Cambiar nombre del equipo
 # ----------------------------------------------------------------
 try {
-    # Obtener nombre actual
+    # Obtener nombre actual y estado del dominio
     $currentComputerName = $env:COMPUTERNAME
+    $computerInfo = Get-WmiObject -Class Win32_ComputerSystem
+    $isInDomain = $computerInfo.PartOfDomain
+    $currentDomain = if ($isInDomain) { $computerInfo.Domain } else { "WORKGROUP" }
+    
     Write-Host "Nombre actual del equipo: $currentComputerName" -ForegroundColor Gray
-    Write-SuccessLog "Iniciando cambio de nombre - Actual: '$currentComputerName', Objetivo: '$HostName'"
+    Write-Host "Estado del dominio: $currentDomain" -ForegroundColor Gray
+    Write-SuccessLog "Iniciando cambio de nombre - Actual: '$currentComputerName', Dominio: '$currentDomain', Objetivo: '$HostName'"
     
     # Validar que el nombre sea diferente
     if ($currentComputerName -eq $HostName) {
         Write-Host "El equipo ya tiene el nombre correcto: '$HostName'" -ForegroundColor Yellow
         Write-SuccessLog "Cambio de nombre omitido - El equipo ya se llama '$HostName'"
     } else {
+        # Preparar parámetros de Rename-Computer
+        $renameParams = @{
+            NewName = $HostName
+            Force = $true
+            PassThru = $true
+            ErrorAction = 'Stop'
+        }
+        
+        # Si el equipo está en dominio, usar credenciales de dominio
+        if ($isInDomain) {
+            Write-Host "⚠️ DETECTADO: El equipo está en dominio '$currentDomain'" -ForegroundColor Yellow
+            Write-Host "Se usarán credenciales de dominio para cambiar el nombre..." -ForegroundColor Cyan
+            Write-SuccessLog "Equipo en dominio detectado - usando credenciales de dominio para rename"
+            
+            # Validar que existan credenciales de dominio
+            if (-not $DomainCred) {
+                throw "Se requieren credenciales de dominio para cambiar el nombre, pero no están disponibles"
+            }
+            
+            $renameParams.Add('DomainCredential', $DomainCred)
+        }
+        
         # Cambiar el nombre del equipo
-        $renameResult = Rename-Computer -NewName $HostName -Force -PassThru -ErrorAction Stop
+        $renameResult = Rename-Computer @renameParams
         
         # Verificar que el comando programó el cambio correctamente
         if ($renameResult) {
-            Write-Host "Cambio de nombre programado exitosamente a '$HostName'" -ForegroundColor Green
+            Write-Host "✅ Cambio de nombre programado exitosamente a '$HostName'" -ForegroundColor Green
             Write-Host "NOTA: El cambio se aplicará después del reinicio" -ForegroundColor Cyan
-            Write-SuccessLog "Cambio de nombre programado exitosamente - Antiguo: '$currentComputerName', Nuevo: '$HostName' (aplicará tras reinicio)"
+            $credMsg = if ($isInDomain) { " (con credenciales de dominio)" } else { "" }
+            Write-SuccessLog "Cambio de nombre programado exitosamente - Antiguo: '$currentComputerName', Nuevo: '$HostName' (aplicará tras reinicio)$credMsg"
         } else {
             throw "Rename-Computer no retornó resultado esperado"
         }
@@ -561,9 +589,12 @@ try {
     Start-Sleep -Seconds $Delay
 } catch {
     Write-Error "Error al cambiar el nombre del equipo: $($_.Exception.Message)"
-    Write-Host "Por favor, verifica que el nombre del equipo sea válido y no esté en uso en la red."
+    Write-Host "Por favor, verifica que el nombre del equipo sea válido y no esté en uso en la red." -ForegroundColor Yellow
+    if ($isInDomain) {
+        Write-Host "NOTA: El equipo está en dominio. Verifica que las credenciales de dominio sean correctas." -ForegroundColor Yellow
+    }
     Write-ErrorLog "Error al cambiar el nombre del equipo: $($_.Exception.Message)"
-    Write-ErrorLog "Nombre actual: $currentComputerName, Nombre objetivo: $HostName"
+    Write-ErrorLog "Nombre actual: $currentComputerName, Dominio: $currentDomain, Nombre objetivo: $HostName"
     Start-Sleep -Seconds $Delay
     exit 1
 }

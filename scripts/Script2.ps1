@@ -677,7 +677,22 @@ try {
             Write-SuccessLog "Cambiando nombre de '$currentComputerName' a '$($nameCheck.AlternativeName)' por conflicto en AD"
 
             try {
-                Rename-Computer -NewName $nameCheck.AlternativeName -Force -PassThru | Out-Null
+                # Verificar si el equipo está en dominio para usar credenciales apropiadas
+                $computerSystem = Get-WmiObject -Class Win32_ComputerSystem
+                $isInDomain = $computerSystem.PartOfDomain
+                
+                $renameParams = @{
+                    NewName = $nameCheck.AlternativeName
+                    Force = $true
+                    PassThru = $true
+                }
+                
+                if ($isInDomain) {
+                    Write-Host "  (Equipo en dominio - usando credenciales de dominio)" -ForegroundColor Gray
+                    $renameParams.Add('DomainCredential', $Credential)
+                }
+                
+                Rename-Computer @renameParams | Out-Null
                 Write-Host "  [OK] Nombre del equipo cambiado a: $($nameCheck.AlternativeName)" -ForegroundColor Green
                 Write-SuccessLog "[SUCCESS] Nombre cambiado exitosamente de '$currentComputerName' a '$($nameCheck.AlternativeName)'"
                 $currentComputerName = $nameCheck.AlternativeName
