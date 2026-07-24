@@ -1,24 +1,36 @@
-#Requires -RunAsAdministrator
+﻿#Requires -RunAsAdministrator
 
 <#
 .SYNOPSIS
     Script de configuracion inicial de credenciales para AutoConfigPS
 
 .DESCRIPTION
-    Este script ayuda a generar credenciales cifradas usando DPAPI de Windows.
-    Las credenciales se almacenan cifradas y solo pueden ser leidas por el usuario
-    y maquina que las creo.
+    Este script ayuda a generar credenciales cifradas con AES-256 (modulo
+    modules/CredentialStore.ps1). La clave de cifrado se guarda en
+    SecureConfig\.aeskey protegida con permisos NTFS restrictivos
+    (Administrators + SYSTEM), para que el pipeline desatendido (que corre como
+    SYSTEM via tarea programada) pueda descifrarlas sin intervencion manual.
+
+    NOTA: esto NO es DPAPI. DPAPI en modo usuario no es legible por la cuenta
+    SYSTEM que ejecuta el pipeline tras cada reinicio, por eso se usa AES con
+    clave propia. La proteccion real depende de las ACL del archivo de clave:
+    cualquier administrador local de este equipo puede descifrar las credenciales,
+    no solo el usuario que las creo.
 
 .NOTES
     Autor: Json Rivera (JasRockr!)
-    Version: 1.0.1
-    Fecha: 2026-02-06
+    Version: 1.1.0
+    Fecha: 2026-07-24
 
     IMPORTANTE:
     - Debe ejecutarse con privilegios de administrador
-    - Las credenciales solo seran validas en este equipo con este usuario
+    - Las credenciales solo seran validas en este equipo (la clave AES es local)
     - Para uso en multiples equipos, ejecutar este script en cada uno
-    
+
+    CHANGELOG v1.1.0:
+    - Actualizada la ruta del modulo de credenciales a modules/CredentialStore.ps1
+    - Corregida la documentacion: el cifrado es AES-256, no DPAPI
+
     CHANGELOG v1.0.1:
     - Agregada configuracion automatica de ExecutionPolicy
 
@@ -72,7 +84,7 @@ $ScriptVersion = "1.0.0"
 $SecureConfigPath = "$PSScriptRoot\..\SecureConfig"
 
 # Importar módulo de gestión segura de credenciales
-. "$PSScriptRoot\SecureCredentialManager.ps1"
+. "$PSScriptRoot\..\modules\CredentialStore.ps1"
 
 # ====================================
 # FUNCIONES AUXILIARES
@@ -124,7 +136,7 @@ Write-ColoredMessage "AutoConfigPS - Configuracion de Credenciales Seguras" -Typ
 Write-Host "Version: $ScriptVersion" -ForegroundColor Gray
 Write-Host ""
 Write-ColoredMessage "Este asistente te guiara en la configuracion de credenciales cifradas" -Type Info
-Write-ColoredMessage "Las credenciales se cifraran usando DPAPI de Windows" -Type Info
+Write-ColoredMessage "Las credenciales se cifraran con AES-256 (clave local en SecureConfig\.aeskey)" -Type Info
 Write-Host ""
 
 # ====================================
@@ -352,7 +364,7 @@ Write-Host "  2. Asegurate de que config.ps1 este configurado para usar credenci
 Write-Host "  3. Ejecuta 'init.bat' para iniciar el proceso de configuracion" -ForegroundColor Gray
 Write-Host ""
 
-Write-ColoredMessage "IMPORTANTE: Las credenciales solo funcionaran en este equipo con este usuario" -Type Warning
+Write-ColoredMessage "IMPORTANTE: Las credenciales solo funcionaran en este equipo (clave AES local)" -Type Warning
 Write-Host ""
 
 Read-Host "Presiona Enter para salir"

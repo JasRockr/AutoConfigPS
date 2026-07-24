@@ -2,11 +2,19 @@
 
 > Sistema automatizado de configuración inicial para equipos Windows en ambientes corporativos
 
-[![Version](https://img.shields.io/badge/version-0.0.4-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](CHANGELOG.md)
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1+-blue.svg)](https://docs.microsoft.com/powershell/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-**AutoConfigPS** automatiza completamente la configuración de equipos Windows corporativos, incluyendo cambio de nombre, conexión Wi-Fi, unión al dominio e instalación de aplicaciones.
+**AutoConfigPS** automatiza completamente la configuración de equipos Windows corporativos, incluyendo cambio de nombre, conexión Wi-Fi, unión al dominio e instalación de aplicaciones — de forma **desatendida**, reanudándose sola a través de los reinicios necesarios sin ninguna intervención manual.
+
+> **v0.1.0 — Nueva arquitectura.** El proyecto pasó de una cadena de scripts
+> encadenados por tareas programadas por fase a un **orquestador único con estado
+> persistente**, que es siempre idempotente y nunca se bloquea esperando una tecla.
+> Ver [Estructura del Proyecto](#-estructura-del-proyecto) y [Flujo de Ejecución](#-flujo-de-ejecución).
+> Los scripts de la versión anterior (`Script0`-`Script4.ps1`) ya no están en el
+> repositorio; el estado previo a esta migración quedó etiquetado como
+> `v0.0.4-legacy` en git por si hace falta compararlo.
 
 ---
 
@@ -197,7 +205,20 @@ Set-ExecutionPolicy Restricted -Scope CurrentUser -Force
 
 ## 🚀 Inicio Rápido
 
-### 1. Descargar el Proyecto
+### 1. Obtener el Proyecto en el Equipo de Destino
+
+**Opción A (recomendada para equipos corporativos):** un Windows recién
+instalado no trae `git` — no depender de instalarlo es justo el motivo por el
+que todo el pipeline está escrito para PowerShell 5.1 sin módulos externos.
+Descarga el `.zip` publicado en [GitHub Releases](../../releases) (lo genera
+automáticamente `package-release.yml` en cada release) y descomprímelo, o copia
+la carpeta completa por USB/recurso de red:
+
+```powershell
+Expand-Archive -Path .\AutoConfigPS-vX.Y.Z.zip -DestinationPath C:\AutoConfigPS
+```
+
+**Opción B (equipo de desarrollo, con git instalado):**
 
 ```bash
 git clone https://github.com/usuario/AutoConfigPS.git
@@ -252,20 +273,24 @@ $OUPath = "OU=Workstations,OU=Equipos,DC=empresa,DC=local"
 ### 5. Ejecutar
 
 ```batch
-# Hacer doble clic en init.bat
-# O desde CMD/PowerShell:
+# Clic derecho en init.bat > "Ejecutar como administrador"
+# O desde CMD/PowerShell ya elevado:
 .\init.bat
 ```
 
-El script:
+`init.bat` eleva privilegios y lanza `Invoke-AutoConfigPS.ps1`, el orquestador único.
+A partir de ahí todo el proceso es automático, incluidos los reinicios necesarios:
 
-1. ✅ Valida requisitos (Script0.ps1)
-2. ⚙️ Configura Wi-Fi y renombra equipo (Script1.ps1)
-3. 🔄 Reinicia
-4. 🏢 Une al dominio (Script2.ps1)
-5. 🔄 Reinicia
-6. 📦 Instala aplicaciones (Script3.ps1)
-7. ✅ Confirma completado (Script4.ps1)
+1. ✅ Valida requisitos del sistema (una sola vez, en el primer arranque)
+2. ⚙️ Configura Wi-Fi
+3. 🏷️ Cambia el nombre del equipo → 🔄 reinicia y **retoma solo**
+4. 🏢 Une al dominio → 🔄 reinicia y **retoma solo**
+5. 📦 Instala aplicaciones
+6. ✅ Finaliza y notifica al usuario en su próximo inicio de sesión
+
+No hace falta volver a ejecutar nada manualmente entre reinicios: una tarea
+programada (`AutoConfigPS-Orchestrator`) retoma el proceso automáticamente en el
+punto exacto donde quedó, y se elimina sola al terminar.
 
 ---
 
@@ -357,13 +382,24 @@ Si no se define, el equipo se une al contenedor "Computers" predeterminado.
 
 ```structure
 AutoConfigPS/
+├── Invoke-AutoConfigPS.ps1     # Orquestador único: punto de entrada de todo el pipeline
+│
+├── modules/
+│   ├── Logging.ps1             # Logging centralizado (antes duplicado en cada script)
+│   ├── StateMachine.ps1        # Estado persistente en C:\ProgramData\AutoConfigPS\state.json
+│   ├── Preflight.ps1           # Validación de requisitos (antes Script0.ps1)
+│   └── CredentialStore.ps1     # Gestión de credenciales cifradas (AES-256)
+│
+├── steps/                      # Un archivo por paso del pipeline, cada uno idempotente
+│   ├── Step-ConfigureWifi.ps1
+│   ├── Step-RenameComputer.ps1
+│   ├── Step-JoinDomain.ps1
+│   ├── Step-InstallApps.ps1
+│   ├── Step-Finalize.ps1
+│   └── Show-Notification.ps1   # Notificación al usuario (tarea AtLogOn, no SYSTEM)
+│
 ├── scripts/
-│   ├── Setup-Credentials.ps1  # Asistente de credenciales cifradas
-│   ├── Script0.ps1             # Pre-validación de requisitos
-│   ├── Script1.ps1             # Configuración básica (Wi-Fi, nombre)
-│   ├── Script2.ps1             # Unión al dominio
-│   ├── Script3.ps1             # Instalación de aplicaciones
-│   └── Script4.ps1             # Confirmación y notificación
+│   └── Setup-Credentials.ps1   # Asistente interactivo de credenciales cifradas
 │
 ├── config.ps1                  # Configuración principal (crear desde example)
 ├── apps.json                   # Lista de aplicaciones (opcional)
@@ -371,84 +407,73 @@ AutoConfigPS/
 ├── example-config.ps1          # Plantilla de configuración
 ├── example-apps.json           # Plantilla de aplicaciones
 │
-├── init.bat                    # Script de inicio
+├── init.bat                    # Eleva privilegios y lanza el orquestador
+├── PSScriptAnalyzerSettings.psd1  # Reglas excluidas del lint (con motivo documentado)
+├── .github/workflows/          # CI: sintaxis PS5.1 real + BOM + lint (push/PR), empaquetado (release)
 ├── README.md                   # Esta documentación
 ├── CHANGELOG.md                # Historial de cambios
-├── LOG_IMPLEMENTACION.md       # Documentación técnica de implementación
+├── GUIA_PRUEBAS.md             # Guía de pruebas piloto en hardware real
 └── LICENSE                     # Licencia MIT
 ```
+
+Cada paso en `steps/` sigue el mismo contrato: recibe la configuración ya cargada,
+comprueba si su trabajo ya está hecho (idempotencia) y devuelve `Success`, `Skipped`,
+`RebootRequired` o `Failed`. El orquestador es el único que decide qué hacer con ese
+resultado (reintentar, reiniciar o detener el pipeline) — ningún paso reinicia el
+equipo ni pide confirmación por sí mismo.
 
 ---
 
 ## 🔄 Flujo de Ejecución
 
 ```diagram
-┌─────────────────────────────────────────────────────────────┐
-│                      INICIO (init.bat)                       │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   Script0.ps1 (v0.0.4)                       │
-│               PRE-VALIDACIÓN DE REQUISITOS                   │
-│  ✓ Privilegios admin                                         │
-│  ✓ PowerShell 5.1+                                           │
-│  ✓ Adaptador Wi-Fi                                           │
-│  ✓ config.ps1 existe                                         │
-│  ℹ Winget, credenciales, espacio, conectividad               │
-└────────────────────────┬────────────────────────────────────┘
-                         │ Si pasa
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      Script1.ps1 (1/4)                       │
-│             CONFIGURACIÓN BÁSICA DEL SISTEMA                 │
-│  1. Configurar red Wi-Fi (con validación completa)          │
-│  2. Configurar autologin (usuario local)                    │
-│  3. Cambiar nombre del equipo                               │
-│  4. Crear tarea programada (Exec-Join-Domain)               │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-                         ▼ REINICIO #1
-                         │
-┌─────────────────────────────────────────────────────────────┐
-│                      Script2.ps1 (2/4)                       │
-│                   UNIÓN AL DOMINIO                           │
-│  1. Actualizar autologin (usuario de dominio)               │
-│  2. Validar acceso a DC (v0.0.4)                             │
-│  3. Verificar nombre duplicado (v0.0.4)                      │
-│  4. Unir equipo al dominio (con OU opcional)                 │
-│  5. Crear tarea programada (Exec-Check-Continue)            │
-│  6. Eliminar tarea anterior                                  │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-                         ▼ REINICIO #2
-                         │
-┌─────────────────────────────────────────────────────────────┐
-│                      Script3.ps1 (3/4)                       │
-│           INSTALACIÓN DE APLICACIONES                        │
-│  1. Validar cambios aplicados                               │
-│  2. Eliminar tarea anterior                                  │
-│  3. Desactivar autologin                                     │
-│  4. Instalar aplicaciones:                                   │
-│     ├─ Winget (con timeout v0.0.4)                           │
-│     └─ Network (con timeout v0.0.4)                          │
-│  5. Mostrar resumen de instalaciones (v0.0.4)                │
-│  6. Crear archivo de confirmación                            │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      Script4.ps1 (4/4)                       │
-│            CONFIRMACIÓN Y NOTIFICACIÓN                       │
-│  • Mensaje en consola con resumen                            │
-│  • Notificación Toast al usuario                             │
-│  • Referencias a logs                                        │
-└─────────────────────────────────────────────────────────────┘
-                         │
-                         ▼
-                   CONFIGURACIÓN
-                    COMPLETADA ✅
++-----------------------------------------------------------------+
+|        init.bat  ->  Invoke-AutoConfigPS.ps1 (elevado)          |
++----------------------------------+-------------------------------+
+                                    |
+                                    v  (solo la primera vez: no existe state.json)
++-------------------------------------------------------------------+
+|  PRE-VALIDACION (modules/Preflight.ps1)                            |
+|  - Privilegios admin - PowerShell 5.1+ - Wi-Fi - config.ps1        |
+|  - Winget, credenciales, espacio, conectividad (informativos)      |
++----------------------------------+---------------------------------+
+                                    | Si pasa: registra la tarea unica
+                                    | 'AutoConfigPS-Orchestrator' (AtStartup, SYSTEM)
+                                    v
+        +-------------------------------------------------------+
+        |   BUCLE DEL ORQUESTADOR (idempotente, sin              |
+        |   Read-Host en ningun punto)                           |
+        |                                                         |
+        |   Por cada paso pendiente en state.json:                |
+        |     - Si ya esta hecho -> Skipped, sigue                |
+        |     - Ejecuta el paso (con reintentos acotados)         |
+        |     - Failed sin mas reintentos -> detiene todo el      |
+        |       pipeline y sale (no se reprograma solo)           |
+        |     - RebootRequired -> guarda estado y reinicia        |
+        |       (o espera reinicio manual si $AutoRestart=$false) |
+        +-------------------------------------------------------+
+                                    |
+   1/5 ConfigureWifi  ------------- conecta y valida IP/gateway/DNS
+   2/5 RenameComputer ------------- autologin local opcional + rename -> reinicia
+   3/5 JoinDomain     ------------- valida DC, evita nombres duplicados,
+                                    une al dominio (con OU opcional) -> reinicia
+   4/5 InstallApps    ------------- desactiva autologin, instala Winget/Network
+                                    con timeout; no detiene el flujo por app
+   5/5 Finalize       ------------- archivo de confirmacion + tarea AtLogOn que
+                                    notifica al usuario y se autoelimina
+                                    |
+                                    v
+        state.json: Status = Completed
+        tarea 'AutoConfigPS-Orchestrator' se autoelimina
+                                    |
+                                    v
+                            CONFIGURACION
+                             COMPLETADA
 ```
+
+La tarea programada unica retoma el mismo `Invoke-AutoConfigPS.ps1` tras cada
+reinicio -- no hay una tarea distinta por fase ni scripts que "adivinen" en que paso
+quedaron: todo el progreso vive en `C:\ProgramData\AutoConfigPS\state.json`.
 
 **Tiempo estimado:** 20-40 minutos (dependiendo del número de aplicaciones)
 
@@ -456,14 +481,18 @@ AutoConfigPS/
 
 ## 🔒 Seguridad
 
-### Credenciales Cifradas (v0.0.4)
+### Credenciales Cifradas
 
-Las credenciales se cifran usando **DPAPI (Data Protection API)** de Windows:
+Las credenciales se cifran con **AES-256** (`modules/CredentialStore.ps1`), no con
+DPAPI: DPAPI en modo usuario no es legible por la cuenta **SYSTEM**, que es quien
+ejecuta el pipeline de forma desatendida tras cada reinicio.
 
-- ✅ Cifrado automático por usuario y máquina
+- ✅ Clave AES de 256 bits generada una vez por equipo (`SecureConfig\.aeskey`)
 - ✅ No requiere gestión manual de claves
-- ✅ Solo legibles por el usuario que las creó en el equipo específico
-- ✅ Almacenamiento en `SecureConfig/` con permisos restrictivos
+- ✅ Almacenamiento en `SecureConfig/` con permisos NTFS restrictivos (Administrators + SYSTEM)
+- ⚠️ La protección depende de esas ACL: cualquier administrador local del equipo
+  puede descifrar las credenciales, no solo el usuario que las creó. Es una
+  protección contra lectura casual del disco, no un secreto por-usuario como DPAPI.
 
 **Configurar:**
 
@@ -505,7 +534,7 @@ Remove-Variable -Name PlainTextPassword
 **Problema:** Al ejecutar cualquier script de PowerShell obtienes error similar a:
 
 ```text
-No se puede cargar el archivo C:\AutoConfigPS\scripts\Script0.ps1 porque
+No se puede cargar el archivo C:\AutoConfigPS\Invoke-AutoConfigPS.ps1 porque
 la ejecución de scripts está deshabilitada en este sistema.
 ```
 
@@ -526,19 +555,20 @@ Get-ExecutionPolicy
 
 ---
 
-### Script0.ps1 Falla (Pre-validación)
+### Falla la pre-validación (primer arranque)
 
-**Problema:** Validación crítica falla
+**Problema:** Alguna validación crítica falla y el pipeline no llega a iniciar.
 
 **Soluciones:**
 
 - **Sin privilegios admin**: Ejecutar `init.bat` como administrador
 - **PowerShell < 5.1**: Actualizar desde <https://aka.ms/powershell-release>
-- **Sin Wi-Fi**: Si usas Ethernet, modificar Script1.ps1 para omitir configuración Wi-Fi
+- **Sin Wi-Fi**: Si usas Ethernet, el paso `ConfigureWifi` fallará; puedes marcarlo
+  como completado a mano en `C:\ProgramData\AutoConfigPS\state.json` si no aplica.
 - **config.ps1 no existe**: Copiar `example-config.ps1` a `config.ps1`
 - **Sin Winget**: Instalar desde Microsoft Store (App Installer)
 
-### Script1.ps1 - Falla Conexión Wi-Fi
+### Paso `ConfigureWifi` - Falla Conexión Wi-Fi
 
 **Problema:** No se puede conectar a Wi-Fi
 
@@ -558,9 +588,10 @@ Get-ExecutionPolicy
    Get-NetAdapter | Where-Object {$_.InterfaceDescription -match "Wi-Fi"}
    ```
 
-4. Revisar logs en `C:\Logs\setup_errors.log`
+4. Revisar logs en `C:\Logs\setup_errors.log`. El paso reintenta automáticamente
+   hasta `$MaxStepAttempts` veces (config.ps1) antes de detener el pipeline.
 
-### Script2.ps1 - Falla Unión al Dominio
+### Paso `JoinDomain` - Falla Unión al Dominio
 
 **Problema:** No se puede unir al dominio
 
@@ -575,16 +606,19 @@ Get-ExecutionPolicy
    - Verificar credenciales de dominio en config.ps1
    - Verificar permisos del usuario para unir equipos al dominio
 
-3. **Error "Nombre duplicado"** (v0.0.4):
-   - Script detecta automáticamente y genera nombre alternativo
-   - Si falla generación, cambiar manualmente `$HostName` en config.ps1
+3. **Error "Nombre duplicado"**:
+   - El paso detecta automáticamente el conflicto y usa un nombre alternativo
+     (`<HostName>-NNN`) SOLO para la unión al dominio; nunca vuelve a forzar el
+     `$HostName` original ya identificado como duplicado.
+   - Si no se pudo generar alternativo, el paso falla de forma definitiva
+     (no reintenta) e indica que cambies `$HostName` en config.ps1 manualmente.
 
-4. **Error de OU** (v0.0.4):
+4. **Error de OU**:
    - Verificar que la OU exista: Abrir "Active Directory Users and Computers"
    - Verificar formato del DN: `OU=Workstations,DC=empresa,DC=local`
    - Verificar permisos del usuario en la OU
 
-### Script3.ps1 - Fallan Instalaciones
+### Paso `InstallApps` - Fallan Instalaciones
 
 **Problema:** Instalaciones de aplicaciones fallan o timeout
 
@@ -604,9 +638,23 @@ Get-ExecutionPolicy
    - Verificar permisos del usuario de dominio
    - Verificar que el instalador sea silencioso
 
-4. **Revisar resumen** (v0.0.4):
-   - Script3 muestra resumen con apps exitosas/fallidas
+4. **Revisar resumen**:
+   - El paso muestra un resumen con apps exitosas/fallidas al terminar
+   - Los fallos de apps individuales NO detienen el pipeline (se reportan, nada más)
    - Revisar logs: `C:\Logs\setup_errors.log`
+
+### El pipeline quedó en estado `Failed`
+
+**Problema:** Un paso agotó sus reintentos (`$MaxStepAttempts`) y el pipeline se
+detuvo. La tarea programada `AutoConfigPS-Orchestrator` se elimina automáticamente
+en este caso (para no reintentar en cada arranque futuro sin que nadie lo note).
+
+**Solución:**
+
+1. Revisa `C:\Logs\setup_errors.log` para el motivo exacto.
+2. Corrige el problema (credenciales, config.ps1, conectividad, etc.).
+3. Vuelve a ejecutar `.\Invoke-AutoConfigPS.ps1` manualmente (elevado): retoma
+   exactamente en el paso que falló, sin repetir los pasos ya completados.
 
 ### Logs y Diagnóstico
 
@@ -639,8 +687,9 @@ notepad C:\Logs\setup_success.log
 | Wi-Fi no conecta | SSID/contraseña incorrecta | Verificar config.ps1 |
 | Unión al dominio falla | Sin conectividad a DC | Verificar red y DNS |
 | Winget no funciona | No instalado | Instalar desde Microsoft Store |
-| Instalación cuelga (v0.0.3) | Sin timeout | Actualizar a v0.0.4 |
-| Nombre duplicado causa error | Equipo ya existe en AD | v0.0.4 resuelve automáticamente |
+| Instalación cuelga | Sin timeout | Configurable por app en `apps.json`/config.ps1 |
+| Nombre duplicado causa error | Equipo ya existe en AD | Se resuelve automáticamente (paso `JoinDomain`) |
+| Pipeline no retoma tras reiniciar | Tarea `AutoConfigPS-Orchestrator` no registrada | Revisa `Get-ScheduledTask -TaskName AutoConfigPS-Orchestrator`; vuelve a ejecutar `Invoke-AutoConfigPS.ps1` manualmente |
 
 ---
 
@@ -649,6 +698,23 @@ notepad C:\Logs\setup_success.log
 Ver [CHANGELOG.md](CHANGELOG.md) para el historial completo de cambios.
 
 ### Versiones
+
+- **v0.1.0** (2026-07-24) - Nueva arquitectura: orquestador único desatendido
+  - 🏗️ Reemplaza la cadena `Script0`-`Script4` (tareas programadas por fase) por
+    `Invoke-AutoConfigPS.ps1`: un orquestador único, idempotente, con estado
+    persistente en `C:\ProgramData\AutoConfigPS\state.json`
+  - 🚫 Elimina todos los `Read-Host` de la ruta desatendida (causaban cuelgues
+    indefinidos al ejecutarse como SYSTEM sin sesión interactiva)
+  - 🐛 Corrige el bug por el que la unión al dominio revertía un nombre
+    alternativo ya resuelto de vuelta al nombre original duplicado
+  - 🔔 La notificación final ya no depende de UI lanzada desde SYSTEM (Sesión 0):
+    se muestra vía una tarea `AtLogOn` que se autoelimina
+  - 🧩 Logging, credenciales y validaciones previas consolidados en `modules/`
+    (antes duplicados en cada script)
+  - 🔡 Todos los `.ps1` activos se guardan con BOM UTF-8 para prevenir errores
+    de parsing por codificación en equipos con code page distinto a UTF-8
+  - 📦 Scripts v0.0.4 y documentación de hotfixes puntuales ya incorporados al
+    código retirados del repositorio (recuperables con el tag git `v0.0.4-legacy`)
 
 - **v0.0.4** (2026-01-28) - Seguridad y robustez
   - 🔒 Credenciales cifradas con DPAPI
@@ -699,8 +765,7 @@ Las contribuciones son bienvenidas. Por favor:
 ## 📞 Soporte
 
 - 📝 **Issues**: [GitHub Issues](https://github.com/usuario/AutoConfigPS/issues)
-- 📚 **Documentación técnica**: Ver [LOG_IMPLEMENTACION.md](LOG_IMPLEMENTACION.md)
-- 📖 **Guía de pruebas**: Ver [GUIA_PRUEBAS.md](GUIA_PRUEBAS.md) (próximamente)
+- 📖 **Guía de pruebas piloto**: Ver [GUIA_PRUEBAS.md](GUIA_PRUEBAS.md)
 
 ---
 

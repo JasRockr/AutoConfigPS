@@ -7,6 +7,78 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [v0.1.0] - 2026-07-24
+
+### 🏗️ Rediseño de arquitectura: orquestador único desatendido
+
+#### Motivación
+
+El diseño v0.0.4 encadenaba `Script0`-`Script4` mediante tareas programadas
+distintas por fase (`Exec-Join-Domain`, `Exec-Check-Continue`), sin estado
+persistente explícito. Cada script "adivinaba" en qué fase estaba mirando efectos
+colaterales del sistema, lo que producía bugs verificados en el análisis previo a
+esta versión: prompts `Read-Host` bloqueantes al ejecutarse como SYSTEM sin sesión
+interactiva, notificación final inalcanzable (Sesión 0), y un bug de lógica que
+revertía la protección anti-nombres-duplicados en la unión al dominio.
+
+#### Added
+
+- `Invoke-AutoConfigPS.ps1`: orquestador único, idempotente, punto de entrada de
+  todo el pipeline.
+- `modules/StateMachine.ps1`: estado persistente en
+  `C:\ProgramData\AutoConfigPS\state.json`, con reintentos acotados por paso
+  (`$MaxStepAttempts`, `$StepRetryDelaySeconds`).
+- `modules/Logging.ps1`, `modules/Preflight.ps1`, `modules/CredentialStore.ps1`:
+  logging, pre-validación y credenciales consolidados (antes duplicados en cada
+  script).
+- `steps/Step-*.ps1`: un archivo por paso del pipeline (`ConfigureWifi`,
+  `RenameComputer`, `JoinDomain`, `InstallApps`, `Finalize`), cada uno idempotente
+  y sin llamadas a `Read-Host`.
+- `steps/Show-Notification.ps1` + tarea `AtLogOn`: notificación final que ya no
+  depende de UI lanzada desde el contexto SYSTEM.
+- Variables nuevas en `config.ps1`: `$AutoRestart`, `$MaxStepAttempts`,
+  `$StepRetryDelaySeconds`.
+- Todos los `.ps1` activos se guardan con BOM UTF-8 (previene la clase de bug de
+  codificación crítico ya reportado en pruebas de hardware real de v0.0.4-hotfix1).
+
+#### Fixed
+
+- **CRÍTICO:** `Read-Host` bloqueante en pasos que corren como SYSTEM vía tarea
+  programada, sin sesión interactiva (el pipeline quedaba colgado indefinidamente).
+- **CRÍTICO:** bug de lógica en la unión al dominio que forzaba el nombre original
+  duplicado de vuelta durante `Add-Computer`, anulando la detección de nombres
+  duplicados.
+- Bug de interpolación `${duration.TotalSeconds:N1}` (no válido en PowerShell) que
+  dejaba vacíos los tiempos de instalación de apps en logs y consola.
+- Inconsistencia de documentación: el cifrado de credenciales es AES-256
+  (`modules/CredentialStore.ps1`), no DPAPI como se documentaba antes.
+
+#### Changed
+
+- `init.bat` ya no invoca `Script0.ps1`/`Script1.ps1` por separado: lanza
+  `Invoke-AutoConfigPS.ps1`, que hace la pre-validación y el pipeline completo.
+- Se agregó `Write-Progress` en la pre-validación, el pipeline general, la
+  instalación de aplicaciones y los bucles de reintento (Wi-Fi, DC); las
+  instalaciones ya no bloquean en silencio, hacen polling con tiempo transcurrido.
+- Nuevo marcador `C:\ProgramData\AutoConfigPS\status.json` (legible por cualquier
+  usuario) para que la tarea `AutoConfigPS-Notify` avise "en progreso, no apagues
+  el equipo" durante los reinicios, no solo al finalizar.
+- `GUIA_PRUEBAS.md` reescrita para el nuevo pipeline (la versión v0.0.4 quedaba
+  obsoleta: referenciaba `Script0`-`Script3` y tareas por fase que ya no existen).
+
+#### Removed
+
+- Scripts v0.0.4 (`Script0`-`Script4.ps1`, `SecureCredentialManager.ps1`,
+  utilidades de debug sueltas en la raíz) y documentación de hotfixes puntuales ya
+  incorporados al código (`CORRECCION_RUTAS.md`, `HOTFIX_ENCODING.md`,
+  `SOLUCION_ERROR_JSON.md`, `DOC_UPDATE_EXECUTIONPOLICY.md`,
+  `LOG_IMPLEMENTACION.md`, `analisis_20260202.md`, `notes.txt`). Nada de esto se
+  perdió: el commit anterior a esta migración quedó etiquetado como tag local
+  `v0.0.4-legacy` (`git show v0.0.4-legacy:<ruta>` para recuperar cualquier
+  archivo).
+
+---
+
 ## [v0.0.4-hotfix2] - 2026-01-28
 
 ### 🔧 HOTFIX - Conexion Wi-Fi con Caracteres Especiales

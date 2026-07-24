@@ -1,107 +1,54 @@
-REM Description: Script de inicio para ejecutar un script de PowerShell como Admin
-REM Author: Json
-REM Date: 2025-03-20
-REM Version: 1.1
-REM Usage: init.bat
-REM Requirements: Windows 10 / 11
+REM Description: Punto de entrada de AutoConfigPS - eleva privilegios y lanza el
+REM              orquestador unico Invoke-AutoConfigPS.ps1 (arquitectura v0.1.0).
+REM Author: Json Rivera (JasRockr!)
+REM Requirements: Windows 10 / 11, PowerShell 5.1+
 REM
-REM Changelog v1.1 (2026-01-28):
-REM   - Agregada pre-validacion con Script0.ps1
-REM   - Solo continúa si pasa todas las validaciones criticas
+REM Changelog v2.0 (migracion a orquestador):
+REM   - Ya NO llama a scripts\Script0.ps1 / Script1.ps1 por separado: el
+REM     orquestador Invoke-AutoConfigPS.ps1 hace la pre-validacion y todo el
+REM     pipeline internamente, reanudandose solo tras cada reinicio.
 
 @echo off
-title Inicio
+title AutoConfigPS
 color 0A
 cls
 
-:: Definir la carpeta de scripts (relativa a la ruta raiz)
-SET SCRIPTS_DIR=scripts
-SET SCRIPT_PRECHECK=script0.ps1
-SET SCRIPT_INIT=script1.ps1
-
-:: Crear o Limpiar el archivo de log
-SET LOG=C:\Logs\LogExec.log
-:: echo. > %LOG%
-
-
-:: Obtener la ruta raiz del script
+:: Ruta raiz del proyecto (donde vive este .bat)
 SET ROOT=%~dp0
+SET ORCHESTRATOR=%ROOT%Invoke-AutoConfigPS.ps1
 
-:: Definir la ruta completa de la carpeta de scripts
-SET FULL_PATH=%ROOT%%SCRIPTS_DIR%
-
-
-:: Validar si la carpeta de scripts existe
-:: echo [%DATE% %TIME%] Validando carpeta de scripts: %FULL_PATH% >> %LOG%
-if not exist "%FULL_PATH%" (
-    powershell -Command "Write-Host '[!ERROR] La carpeta de scripts no existe: "%FULL_PATH%". Valida la ruta e intenta nuevamente.' -ForegroundColor Red"
+:: Validar que el orquestador existe
+if not exist "%ORCHESTRATOR%" (
+    powershell -Command "Write-Host '[!ERROR] No se encontro Invoke-AutoConfigPS.ps1 en: "%ROOT%". Valida la ruta e intenta nuevamente.' -ForegroundColor Red"
     pause
     exit /b 1
 )
 
-:: Validar si el script de pre-validacion existe
-:: echo [%DATE% %TIME%] Validando script de pre-validacion: %FULL_PATH%\%SCRIPT_PRECHECK% >> %LOG%
-if not exist "%FULL_PATH%\%SCRIPT_PRECHECK%" (
-    powershell -Command "Write-Host '[!WARN] Script de pre-validacion no encontrado. Continuando sin validacion...' -ForegroundColor Yellow"
-    goto :SKIP_PRECHECK
-)
-
-:: Ejecutar pre-validacion
-:: echo [%DATE% %TIME%] Ejecutando pre-validacion: %FULL_PATH%\%SCRIPT_PRECHECK% >> %LOG%
 echo.
 echo ========================================
-echo   EJECUTANDO PRE-VALIDACION
+echo   INICIANDO AUTOCONFIGPS
 echo ========================================
 echo.
+echo El orquestador validara los requisitos del sistema y ejecutara el
+echo pipeline completo de configuracion. Si hace falta reiniciar, el
+echo equipo continuara solo al arrancar de nuevo (sin intervencion manual).
+echo.
 
-powershell -NoProfile -ExecutionPolicy Bypass -File "%FULL_PATH%\%SCRIPT_PRECHECK%"
+:: Ejecutar el orquestador elevado. La ventana queda abierta (-NoExit) en el
+:: primer arranque para que se vea el resultado de la pre-validacion; en las
+:: reanudaciones automaticas tras reinicio, el orquestador corre en segundo
+:: plano via la tarea programada 'AutoConfigPS-Orchestrator' (SYSTEM), no por
+:: este .bat.
+powershell -Command "Start-Process powershell -ArgumentList '-NoExit -NoProfile -ExecutionPolicy Bypass -File \"%ORCHESTRATOR%\"' -Verb RunAs"
 
-:: Validar el codigo de salida de pre-validacion
 if %ERRORLEVEL% neq 0 (
-    echo.
-    powershell -Command "Write-Host '[!ERROR] Fallo en la pre-validacion. No se puede continuar con la configuracion.' -ForegroundColor Red"
-    echo.
-    echo Resuelve los problemas criticos y ejecuta este script nuevamente.
-    pause
-    exit /b 1
-)
-
-:SKIP_PRECHECK
-
-:: Validar si el script principal existe
-:: echo [%DATE% %TIME%] Validando script principal: %FULL_PATH%\%SCRIPT_INIT% >> %LOG%
-if not exist "%FULL_PATH%\%SCRIPT_INIT%" (
-    powershell -Command "Write-Host '[!ERROR] El script %SCRIPT_INIT% no existe en: "%FULL_PATH%". Valida la ruta e intenta nuevamente.' -ForegroundColor Red"
-    pause
-    exit /b 1
-)
-
-echo.
-echo ========================================
-echo   INICIANDO CONFIGURACION AUTOMATICA
-echo ========================================
-echo.
-
-:: Ejecutar el script principal como Admin
-:: echo [%DATE% %TIME%] Ejecutando script principal: %FULL_PATH%\%SCRIPT_INIT% >> %LOG%
-powershell -Command "Start-Process powershell -ArgumentList '-NoExit -NoProfile -ExecutionPolicy Bypass -File \"%FULL_PATH%\%SCRIPT_INIT%\"' -Verb RunAs"
-
-:: Validar el codigo de salida
-:: echo [%DATE% %TIME%] Validando codigo de salida: %ERRORLEVEL% >> %LOG%
-if %ERRORLEVEL% neq 0 (
-    powershell -Command "Write-Host '[!ERROR] Ha ocurrido un error al ejecutar el script "%SCRIPT_INIT%" en: "%FULL_PATH%".' -ForegroundColor Red"
+    powershell -Command "Write-Host '[!ERROR] No se pudo iniciar el orquestador (¿se cancelo la solicitud de elevacion?).' -ForegroundColor Red"
     pause
     exit /b 1
 ) else (
-    powershell -Command "Write-Host '[SUCCESS] Script "%SCRIPT_INIT%" ejecutado correctamente en: "%FULL_PATH%".' -ForegroundColor Green"
+    powershell -Command "Write-Host '[OK] Orquestador iniciado en una ventana elevada. Sigue el progreso alli o en C:\Logs\.' -ForegroundColor Green"
 )
 
-:: Restaurar el color de la consola
 color 07
-
-:: Esperar 5 segundos
 timeout /t 5
-
-:: Salir
-:: echo [%DATE% %TIME%] Saliendo del script de inicio... >> %LOG%
 exit /b 0

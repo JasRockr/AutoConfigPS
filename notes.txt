@@ -1,4 +1,0 @@
-
-cd C:\AutoConfigPS\scripts\
-
-Powershell.exe -ExecutionPolicy Bypass -File .\Script1.ps1

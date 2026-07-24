@@ -2,6 +2,12 @@
 apps.json
 config.ps1
 
+# Contexto de desarrollo local (no se versiona)
+CLAUDE.md
+
+# Estado y datos en tiempo de ejecucion (no aplica en el repo, solo por si se prueba local)
+SecureConfig/
+
 # Ignorar archivos temporales y de sistema
 *.tmp
 *.bak

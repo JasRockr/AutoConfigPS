@@ -11,18 +11,114 @@ on:
 jobs:
   validate:
     runs-on: windows-latest
+    defaults:
+      run:
+        # 'powershell' = Windows PowerShell 5.1 (no 'pwsh', que es PowerShell 7+).
+        # AutoConfigPS esta escrito deliberadamente para 5.1, la version que trae
+        # la ISO de Windows sin instalar nada adicional - validar bajo 7 no
+        # detectaria sintaxis incompatible con 5.1 (ver CLAUDE.md).
+        shell: powershell
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
-      - name: Install PSScriptAnalyzer
+      - name: Validar sintaxis (PowerShell 5.1)
         run: |
-          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+          $ErrorActionPreference = 'Stop'
+          $files = Get-ChildItem -Path . -Recurse -Filter *.ps1 |
+              Where-Object { $_.FullName -notmatch '\\\.git\\' }
 
-      - name: Validate PowerShell scripts
-        run: |
-          Get-ChildItem -Path .\scripts\*.ps1 | ForEach-Object {
-            Write-Host "Validating $_..."
-            Invoke-ScriptAnalyzer -Path $_
+          $hadErrors = $false
+          foreach ($file in $files) {
+            $content = Get-Content -Path $file.FullName -Raw
+            $parseErrors = $null
+            [System.Management.Automation.PSParser]::Tokenize($content, [ref]$parseErrors) | Out-Null
+
+            if ($parseErrors.Count -gt 0) {
+              Write-Host "::error file=$($file.FullName)::Errores de sintaxis"
+              foreach ($e in $parseErrors) {
+                Write-Host "  Linea $($e.Token.StartLine): $($e.Message)"
+              }
+              $hadErrors = $true
+            } else {
+              Write-Host "[OK] $($file.FullName)"
+            }
           }
+
+          if ($hadErrors) { exit 1 }
+
+      - name: Verificar BOM UTF-8
+        run: |
+          # Convencion del proyecto (ver CLAUDE.md seccion 3.6): todo .ps1 activo
+          # se guarda con BOM UTF-8 para que PowerShell 5.1 no dependa del code
+          # page del sistema al leer tildes/enies/emoji - esto ya causo un
+          # incidente critico documentado en el historial del proyecto.
+          $ErrorActionPreference = 'Stop'
+          $files = Get-ChildItem -Path . -Recurse -Filter *.ps1 |
+              Where-Object { $_.FullName -notmatch '\\\.git\\' }
+
+          $missingBom = @()
+          foreach ($file in $files) {
+            $bytes = [System.IO.File]::ReadAllBytes($file.FullName)
+            $hasBom = $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
+            if (-not $hasBom) {
+              Write-Host "::error file=$($file.FullName)::Falta BOM UTF-8"
+              $missingBom += $file.FullName
+            }
+          }
+
+          if ($missingBom.Count -gt 0) { exit 1 }
+          Write-Host "[OK] Todos los .ps1 activos tienen BOM UTF-8"
+
+      - name: Validar archivos JSON de ejemplo
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $files = Get-ChildItem -Path . -Recurse -Filter *.json |
+              Where-Object { $_.FullName -notmatch '\\\.git\\' }
+
+          foreach ($file in $files) {
+            try {
+              Get-Content -Path $file.FullName -Raw | ConvertFrom-Json | Out-Null
+              Write-Host "[OK] $($file.FullName)"
+            } catch {
+              Write-Host "::error file=$($file.FullName)::JSON invalido - $($_.Exception.Message)"
+              exit 1
+            }
+          }
+
+      - name: Instalar PSScriptAnalyzer
+        run: Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+
+      - name: Analizar con PSScriptAnalyzer
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $files = Get-ChildItem -Path . -Recurse -Filter *.ps1 |
+              Where-Object { $_.FullName -notmatch '\\\.git\\' }
+          $settingsPath = Join-Path (Get-Location) 'PSScriptAnalyzerSettings.psd1'
+
+          # -Path no acepta un array de archivos directamente en todas las
+          # versiones de PSScriptAnalyzer; se analiza archivo por archivo.
+          $findings = foreach ($file in $files) {
+            Invoke-ScriptAnalyzer -Path $file.FullName -Settings $settingsPath
+          }
+
+          $errors = $findings | Where-Object { $_.Severity -eq 'Error' }
+          $warnings = $findings | Where-Object { $_.Severity -eq 'Warning' }
+
+          if ($warnings) {
+            Write-Host "--- Advertencias (no bloquean el build) ---"
+            $warnings | ForEach-Object {
+              Write-Host "::warning file=$($_.ScriptPath),line=$($_.Line)::[$($_.RuleName)] $($_.Message)"
+            }
+          }
+
+          if ($errors) {
+            Write-Host "--- Errores (bloquean el build) ---"
+            $errors | ForEach-Object {
+              Write-Host "::error file=$($_.ScriptPath),line=$($_.Line)::[$($_.RuleName)] $($_.Message)"
+            }
+            exit 1
+          }
+
+          Write-Host "[OK] Sin errores de PSScriptAnalyzer ($($warnings.Count) advertencias)"

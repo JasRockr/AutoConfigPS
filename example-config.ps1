@@ -1,4 +1,4 @@
-# Archivo de configuración inicial
+﻿# Archivo de configuración inicial
 
 # ----------------------------------------------------------------
 # Configuración de parámetros
@@ -30,6 +30,15 @@ $Delay = 5  # Tiempo en segundos para reinicio
 $ScriptPath = "C:\Ruta\De\Los\Scripts"  # Ruta a la carpeta scripts\
 
 # ----------------------------------------------------------------
+# EJECUCIÓN DESATENDIDA (orquestador Invoke-AutoConfigPS.ps1)
+# ----------------------------------------------------------------
+$AutoRestart = $true           # Reinicia automáticamente entre pasos (recomendado
+                                # para ejecución 100% desatendida). Si es $false, el
+                                # pipeline espera un reinicio manual y retoma solo.
+$MaxStepAttempts = 3            # Reintentos por paso antes de detener el pipeline
+$StepRetryDelaySeconds = 30     # Espera entre reintentos de un mismo paso
+
+# ----------------------------------------------------------------
 # UNIDAD ORGANIZACIONAL (OU) EN ACTIVE DIRECTORY - OPCIONAL
 # ----------------------------------------------------------------
 # Si deseas que el equipo se una a una OU específica en lugar del contenedor
@@ -49,7 +58,7 @@ $ScriptPath = "C:\Ruta\De\Los\Scripts"  # Ruta a la carpeta scripts\
 # Descomenta estas líneas después de ejecutar Setup-Credentials.ps1
 # 
 # Importar módulo de gestión segura de credenciales
-# . "$PSScriptRoot\scripts\SecureCredentialManager.ps1"
+# . "$PSScriptRoot\modules\CredentialStore.ps1"
 # 
 # Cargar clave AES compartida
 # $keyPath = "$PSScriptRoot\SecureConfig\.aeskey"
