@@ -1,0 +1,37 @@
+[
+  {
+    "_comment": "Archivo JSON de ejemplo con la lista de aplicaciones para instalar. El asistente (Setup-Credentials.ps1, Paso 4) puede generar apps.json de forma interactiva.",
+    "_documentation": "Campos: Name (requerido), Source (requerido: Winget|Network), ID (opcional para Winget), Path (requerido para Network), Arguments (opcional para Network), Timeout (opcional en segundos). En Winget el modo silencioso lo maneja winget. En Network el flag silencioso VARIA por instalador (/S, /silent, /qn, -ms); si el instalador no soporta silencioso abrira su asistente para completar a mano.",
+    "_catalogo_winget": "Para descubrir apps y su ID de Winget: https://winstall.app/ (catalogo navegable del repo winget-pkgs) o 'winget search <nombre>' / 'winget show --id <Id>' en consola. Copia el Package ID al campo ID. Ver README.md seccion Configuracion de Aplicaciones."
+  },
+  {
+    "Name": "Google Chrome",
+    "Source": "Winget",
+    "ID": "Google.Chrome",
+    "Timeout": 300
+  },
+  {
+    "Name": "Microsoft Visual Studio Code",
+    "Source": "Winget",
+    "ID": "Microsoft.VisualStudioCode",
+    "Timeout": 240
+  },
+  {
+    "Name": "Notepad++",
+    "Source": "Winget",
+    "Timeout": 180
+  },
+  {
+    "Name": "Adobe Acrobat Reader",
+    "Source": "Winget",
+    "ID": "Adobe.Acrobat.Reader.64-bit",
+    "Timeout": 600
+  },
+  {
+    "Name": "CustomApp",
+    "Source": "Network",
+    "Path": "\\\\NetworkPath\\Installer.exe",
+    "Arguments": "/silent /norestart",
+    "Timeout": 600
+  }
+]

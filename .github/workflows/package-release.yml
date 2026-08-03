@@ -1,0 +1,52 @@
+name: Package Release
+
+# GitHub ya crea el tag automaticamente al publicar un release desde una
+# referencia existente, asi que este workflow NO vuelve a crear/pushear el tag
+# (eso es lo que hacia el antiguo create-tag.yml y por lo general fallaba: el
+# tag ya existe para cuando este workflow arranca). En su lugar, empaqueta el
+# proyecto en un .zip listo para distribuir y lo adjunta al release - cubre el
+# caso de un tecnico que necesita copiar AutoConfigPS a un equipo sin tener git
+# instalado (ver README.md, seccion Inicio Rapido).
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Crear paquete distribuible y adjuntarlo al release
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # El tag se pasa por variable de entorno (no interpolado directo en el
+          # YAML) para no depender de como PowerShell parsea el texto sustituido
+          # por Actions dentro de comillas.
+          $tag = $env:RELEASE_TAG
+
+          # Copiar todo menos metadata de git/CI a una carpeta limpia antes de
+          # comprimir (config.ps1, apps.json y SecureConfig/ son locales del
+          # usuario y ya estan excluidos del checkout via .gitignore).
+          $distDir = Join-Path $env:RUNNER_TEMP 'AutoConfigPS'
+          New-Item -ItemType Directory -Path $distDir -Force | Out-Null
+
+          $exclude = @('.git', '.github')
+          Get-ChildItem -Path . -Force |
+              Where-Object { $_.Name -notin $exclude } |
+              Copy-Item -Destination $distDir -Recurse -Force
+
+          $zipPath = Join-Path $env:RUNNER_TEMP "AutoConfigPS-$tag.zip"
+          Compress-Archive -Path (Join-Path $distDir '*') -DestinationPath $zipPath -Force
+
+          gh release upload $tag $zipPath --clobber

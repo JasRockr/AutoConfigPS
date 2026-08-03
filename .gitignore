@@ -1,0 +1,25 @@
+# Igonorar archivos y variables de configuracion
+apps.json
+config.ps1
+
+# Contexto de desarrollo local (no se versiona)
+CLAUDE.md
+.claude/
+
+# Estado y datos en tiempo de ejecucion (no aplica en el repo, solo por si se prueba local)
+SecureConfig/
+
+# Ignorar archivos temporales y de sistema
+*.tmp
+*.bak
+*.old
+*.log
+
+# Ignorar archivos de configuración de IDE
+.vscode/
+*.code-workspace
+
+# Ignorar archivos de PowerShell
+*.ps1xml
+*.psm1
+*.pssc
